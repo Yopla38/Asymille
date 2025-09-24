@@ -1,0 +1,11 @@
+lmfit
+django
+django-auth
+plotly
+numpy
+matplotlib
+djangorestframework
+stripe
+numdifftools
+sympy
+psycopg

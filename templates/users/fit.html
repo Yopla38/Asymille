@@ -1,0 +1,3663 @@
+<!-- users/templates/users/fit.html -->
+{% load static %}
+{% load custom_filters %}
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générateur de Fit Avancé</title>
+
+    <!-- CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400&family=Open+Sans:wght@400&family=Lato:wght@400&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+
+    <style>
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 1000;
+            transition: all 0.3s;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            width: calc(100% - 250px);
+            transition: all 0.3s;
+        }
+
+        .list-group-item {
+            border-radius: 0.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .list-group-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .list-group-item.active {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+
+        .fit-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .card {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .plot-container {
+            background-color: white;
+            padding: 10px;
+            border-radius: 8px;
+            height: 700px;
+            width: 100%;
+        }
+
+        #plotly-div {
+            height: 100%;
+            width: 100%;
+        }
+
+        .report-container {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .expression-help {
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+
+        .copy-button {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+        }
+
+        .cell-selected {
+            background-color: rgba(0, 123, 255, 0.1) !important;
+        }
+
+        #dataTable td {
+            position: relative;
+            padding: 0;
+        }
+
+        #dataTable td input {
+            width: 100%;
+            height: 100%;
+            padding: 4px;
+            box-sizing: border-box;
+        }
+
+        .selection-area {
+            position: absolute;
+            background-color: rgba(0, 123, 255, 0.2);
+            border: 1px solid rgba(0, 123, 255, 0.5);
+            pointer-events: none;
+        }
+
+        .data-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .table th, .table td {
+            min-width: 100px;
+        }
+
+        #dataTable input {
+            width: 100%;
+            border: none;
+            background: transparent;
+        }
+
+        #dataTable input:focus {
+            background: #fff;
+            outline: none;
+            box-shadow: inset 0 0 0 2px #007bff;
+        }
+
+        .plotly-div {
+            height: 700px;
+            width: 100%;
+        }
+
+        .card-header {
+            background-color: #f8f9fa;
+        }
+
+        .copy-button {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+        }
+
+        .header-input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            font-weight: bold;
+            text-align: center;
+            padding: 5px;
+        }
+
+        .header-input:focus {
+            background: #fff;
+            outline: none;
+            box-shadow: inset 0 0 0 2px #007bff;
+        }
+
+        #colorPicker {
+            padding: 0;
+            width: 50px;
+            height: 38px;
+            border-radius: 4px;
+        }
+
+        #hexColor {
+            font-family: monospace;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        @keyframes flash {
+            0% { background-color: #ffffff; }
+            50% { background-color: #e8f0fe; }
+            100% { background-color: #ffffff; }
+        }
+
+        .flash {
+            animation: flash 0.5s;
+        }
+
+        #fontSelector {
+            min-width: 150px;
+        }
+
+        #fontString {
+            font-family: monospace;
+            background-color: #f8f9fa;
+        }
+
+        #fontPreview {
+            background-color: white;
+            min-height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Style pour les options du sélecteur de police */
+        #fontSelector option {
+            padding: 8px;
+        }
+
+        /* Animation pour le feedback de copie */
+        .copy-feedback {
+            animation: flash 0.5s;
+        }
+
+        #id_expression {
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            white-space: pre;
+            overflow-x: auto;
+            resize: vertical;
+        }
+
+        #id_expression:focus {
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+            border-color: #80bdff;
+        }
+        .nav-tabs .nav-link {
+            color: #495057;
+            border: 1px solid transparent;
+            border-top-left-radius: .25rem;
+            border-top-right-radius: .25rem;
+            padding: .5rem 1rem;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: #007bff;
+            background-color: #fff;
+            border-color: #dee2e6 #dee2e6 #fff;
+        }
+
+        .nav-tabs .nav-link:hover {
+            border-color: #e9ecef #e9ecef #dee2e6;
+        }
+
+        .input-group-text {
+            background-color: #f8f9fa;
+        }
+
+        .form-control:focus {
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        }
+
+        .card-header {
+            background-color: #007bff;
+        }
+
+        .card-header .card-title {
+            margin-bottom: 0;
+            color: white;
+        }
+        .column-expression {
+            display: flex;
+            align-items: center;
+            padding: 2px;
+            background-color: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .expression-input {
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .expression-help-modal .modal-body {
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body>
+   <div class="container-fluid d-flex">
+        <!-- Sidebar -->
+        <div class="sidebar bg-light border-end" style="width: 250px; min-height: 100vh;">
+            <div class="p-3">
+                <h5 class="mb-3">
+                    <i class="fas fa-history"></i> Sessions
+                </h5>
+                {% if sessions %}
+                    <div class="list-group">
+                        {% for session in sessions %}
+                            <a href="{% url 'fit' %}?session_id={{ session.id }}"
+                               class="list-group-item list-group-item-action {% if session.id == current_session.id %}active{% endif %}">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small>{{ session.created_at|date:"d/m/Y H:i" }}</small>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            onclick="deleteSession({{ session.id }}, event)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                                {% if session.name %}
+                                    <div class="small">{{ session.name }}</div>
+                                {% endif %}
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">Aucune session enregistrée</p>
+                {% endif %}
+
+                <button class="btn btn-primary mt-3 w-100" onclick="createNewSession()">
+                    <i class="fas fa-plus"></i> Nouvelle session
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content flex-grow-1">
+            <!-- MA PAGE -->
+            <div class="fit-container">
+                <!-- Navbar -->
+                <nav class="navbar navbar-light bg-light mb-4">
+                    <div class="container-fluid">
+                        <span class="navbar-brand mb-0 h1">
+                            <i class="fas fa-chart-line"></i> Générateur de Fit Avancé
+                        </span>
+                        <a href="{% url 'home' %}" class="btn btn-outline-secondary" onclick="confirmNavigation(event)">
+                            <i class="fas fa-home"></i> Accueil
+                        </a>
+                    </div>
+                </nav>
+
+                <!-- Expression Form -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-cog"></i> Configuration du Fit
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="." id="fitForm">
+                            {% csrf_token %}
+
+                            <!-- Onglets de configuration -->
+                            <ul class="nav nav-tabs mb-3" role="tablist">
+                                <li class="nav-item">
+                                    <a class="nav-link active" data-bs-toggle="tab" href="#expressionTab">
+                                        <i class="fas fa-function"></i> Expression
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" data-bs-toggle="tab" href="#rangeTab">
+                                        <i class="fas fa-arrows-alt-h"></i> Intervalle
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" data-bs-toggle="tab" href="#axesTab">
+                                        <i class="fas fa-chart-line"></i> Axes
+                                    </a>
+                                </li>
+                            </ul>
+
+                            <!-- Contenu des onglets -->
+                            <div class="tab-content">
+                                <!-- Onglet Expression -->
+                                <div class="tab-pane fade show active" id="expressionTab">
+                                    <div class="mb-3">
+                                        <label for="id_expression" class="form-label">Expression du Fit</label>
+                                        <div class="input-group">
+                                            {{ form.expression }}
+                                            <button type="button" class="btn btn-outline-info"
+                                                    data-bs-toggle="modal" data-bs-target="#helpModal">
+                                                <i class="fas fa-question-circle"></i>
+                                            </button>
+                                        </div>
+                                        <div class="form-text text-muted">
+                                            Format: L1:lorentzian(center~0, amplitude~5) + G1:gaussian(center~20)
+                                        </div>
+                                        {{ form.expression_clean }}
+                                        {{ form.data }}
+                                        {{ form.active_page }}
+                                    </div>
+                                </div>
+
+                                <!-- Onglet Intervalle -->
+                                <div class="tab-pane fade" id="rangeTab">
+                                    <div class="card border-light">
+                                        <div class="card-body">
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" id="useFitRange">
+                                                <label class="form-check-label" for="useFitRange">
+                                                    Activer l'intervalle de fit
+                                                </label>
+                                            </div>
+                                            <div class="row g-3">
+                                                <div class="col-md-5">
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">Min</span>
+                                                        <input type="number" class="form-control" id="fitRangeMin"
+                                                               step="any" placeholder="Valeur minimum">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-5">
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">Max</span>
+                                                        <input type="number" class="form-control" id="fitRangeMax"
+                                                               step="any" placeholder="Valeur maximum">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <button type="button" class="btn btn-outline-secondary w-100"
+                                                            onclick="resetFitRange()">
+                                                        <i class="fas fa-undo"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <input type="hidden" id="id_fit_range" name="fit_range">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Onglet Axes -->
+                                <div class="tab-pane fade" id="axesTab">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <div class="input-group">
+                                                <label class="input-group-text">Axe X</label>
+                                                <select class="form-select" id="xColumnSelect" name="x_column">
+                                                    <!-- Options ajoutées dynamiquement -->
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="input-group">
+                                                <label class="input-group-text">Axe Y</label>
+                                                <select class="form-select" id="yColumnSelect" name="y_column">
+                                                    <!-- Options ajoutées dynamiquement -->
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bouton d'exécution -->
+                            <div class="mt-4">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-play"></i> Exécuter le fit
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Ajoutez ceci après le formulaire d'expression et avant le plot -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title d-flex justify-content-between align-items-center">
+                            Données
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPage()">
+                                    <i class="fas fa-plus"></i> Nouvelle page
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deletePage()">
+                                    <i class="fas fa-trash"></i> Supprimer la page
+                                </button>
+                            </div>
+                        </h5>
+
+                        <div class="data-navigation mb-2">
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="previousPage()">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <span class="btn btn-sm btn-outline-secondary" id="pageIndicator">Page 1/1</span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="nextPage()">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="data-container">
+                            <div class="table-responsive">
+                                <table class="table table-sm" id="dataTable">
+                                    <thead>
+                                        <tr>
+                                            <th>X</th>
+                                            <th>Y</th>
+                                            <th>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addColumn()">
+                                                    <i class="fas fa-plus"></i>
+                                                </button>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Les lignes seront ajoutées dynamiquement -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="addRowBtn">
+                                    <i class="fas fa-plus"></i> Ajouter une ligne
+                                </button>
+                                <input type="file" id="fileInput" accept=".txt,.dat,.csv" style="display: none;">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="importFileBtn">
+                                    <i class="fas fa-file-upload"></i> Importer un fichier
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="pasteDataBtn">
+                                    <i class="fas fa-paste"></i> Coller des données
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="checkIntegrityBtn">
+                                    <i class="fas fa-bug"></i> Vérifier l'intégrité
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="copySelectionBtn">
+                                    <i class="fas fa-copy"></i> Copier la sélection
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="pasteSelectionBtn">
+                                    <i class="fas fa-paste"></i> Coller dans la sélection
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="deleteSelectionBtn">
+                                    <i class="fas fa-trash"></i> Supprimer la sélection
+                                </button>
+                            </div>
+
+                    </div>
+                </div>
+
+                {% if all_fits %}
+                    {% for fit in all_fits %}
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Résultats du fit - Page {{ fit.page }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <!-- Plot -->
+                                <div class="plot-container mb-4">
+                                    <div id="plotly-div-{{ forloop.counter }}" class="plotly-div"></div>
+                                </div>
+
+                                <!-- Panneau de contrôle du graphique -->
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">Personnalisation du graphique</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- Onglets -->
+                                        <ul class="nav nav-tabs" role="tablist">
+                                            <li class="nav-item">
+                                                <a class="nav-link active" data-bs-toggle="tab" href="#titleTab">Titre</a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a class="nav-link" data-bs-toggle="tab" href="#legendTab">Légende</a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a class="nav-link" data-bs-toggle="tab" href="#tracesTab">Courbes</a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a class="nav-link" data-bs-toggle="tab" href="#axesTab">Axes</a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a class="nav-link" data-bs-toggle="tab" href="#customTab">Template</a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a class="nav-link" data-bs-toggle="tab" href="#objectsTab">Objets</a>
+                                            </li>
+                                        </ul>
+
+                                        <!-- Contenu des onglets -->
+                                        <div class="tab-content mt-3">
+                                            <!-- Onglet Titre -->
+                                            <div class="tab-pane fade show active" id="titleTab">
+                                                <div class="row g-3">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Texte du titre</label>
+                                                        <input type="text" class="form-control" id="titleText"
+                                                               onchange="updatePlotTitle({{ forloop.counter }}, 'text', this.value)">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Police</label>
+                                                        <select class="form-select" id="titleFont"
+                                                                onchange="updatePlotTitle({{ forloop.counter }}, 'font', this.value)">
+                                                            <option value="Arial">Arial</option>
+                                                            <option value="Times New Roman">Times New Roman</option>
+                                                            <option value="Helvetica">Helvetica</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Taille</label>
+                                                        <input type="number" class="form-control" id="titleSize" min="8" max="24" value="14"
+                                                               onchange="updatePlotTitle({{ forloop.counter }}, 'size', this.value)">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Couleur</label>
+                                                        <input type="color" class="form-control form-control-color" id="titleColor"
+                                                               onchange="updatePlotTitle({{ forloop.counter }}, 'color', this.value)">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Position</label>
+                                                        <select class="form-select" id="titlePosition"
+                                                                onchange="updatePlotTitle({{ forloop.counter }}, 'position', this.value)">
+                                                            <option value="center">Centré</option>
+                                                            <option value="left">Gauche</option>
+                                                            <option value="right">Droite</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Onglet Légende -->
+                                            <div class="tab-pane fade" id="legendTab">
+                                                <div class="row g-3">
+                                                    <div class="col-md-3">
+                                                        <div class="form-check form-switch">
+                                                            <input class="form-check-input" type="checkbox" id="legendVisible" checked
+                                                                   onchange="updatePlotLegend({{ forloop.counter }}, 'visible', this.checked)">
+                                                            <label class="form-check-label">Afficher la légende</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Police</label>
+                                                        <select class="form-select" id="legendFont"
+                                                                onchange="updatePlotLegend({{ forloop.counter }}, 'font', this.value)">
+                                                            <option value="Arial">Arial</option>
+                                                            <option value="Times New Roman">Times New Roman</option>
+                                                            <option value="Helvetica">Helvetica</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Taille</label>
+                                                        <input type="number" class="form-control" id="legendSize" min="6" max="20" value="10"
+                                                               onchange="updatePlotLegend({{ forloop.counter }}, 'size', this.value)">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Position</label>
+                                                        <select class="form-select" id="legendPosition"
+                                                                onchange="updatePlotLegend({{ forloop.counter }}, 'position', this.value)">
+                                                            <option value="top-right">Haut droite</option>
+                                                            <option value="top-left">Haut gauche</option>
+                                                            <option value="bottom-right">Bas droite</option>
+                                                            <option value="bottom-left">Bas gauche</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Onglet Courbes -->
+                                            <div class="tab-pane fade" id="tracesTab">
+                                                <div class="row g-3">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Sélectionner la courbe</label>
+                                                        <select class="form-select" id="traceSelector"
+                                                                onchange="loadTraceSettings({{ forloop.counter }}, this.value)">
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">Couleur</label>
+                                                        <input type="color" class="form-control form-control-color" id="traceColor"
+                                                               onchange="updatePlotTrace({{ forloop.counter }}, 'color', this.value)">
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">Épaisseur</label>
+                                                        <input type="number" class="form-control" id="traceWidth" min="0.5" max="5" step="0.5" value="1"
+                                                               onchange="updatePlotTrace({{ forloop.counter }}, 'width', this.value)">
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">Style</label>
+                                                        <select class="form-select" id="traceStyle"
+                                                                onchange="updatePlotTrace({{ forloop.counter }}, 'style', this.value)">
+                                                            <option value="solid">Solide</option>
+                                                            <option value="dash">Tirets</option>
+                                                            <option value="dot">Points</option>
+                                                            <option value="dashdot">Tiret-point</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">Opacité</label>
+                                                        <input type="range" class="form-range" id="traceOpacity" min="0" max="1" step="0.1" value="1"
+                                                               onchange="updatePlotTrace({{ forloop.counter }}, 'opacity', this.value)">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- Onglet Axes -->
+                                            <div class="tab-pane fade" id="axesTab">
+                                                <div class="row g-3">
+                                                    <!-- Axe X -->
+                                                    <div class="mb-2">
+                                                        <label class="form-label">Titre de l'axe</label>
+                                                        <input type="text" class="form-control" id="xAxisTitle"
+                                                               onchange="updateAxisTitle({{ forloop.counter }}, 'x', this.value)">
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <label class="form-label">Taille des graduations</label>
+                                                        <input type="number" class="form-control" id="xTickSize" min="1" max="20"
+                                                               onchange="updateTickSize({{ forloop.counter }}, 'x', this.value)">
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <label class="form-label">Position des graduations</label>
+                                                        <select class="form-select" id="xTickPosition"
+                                                                onchange="updateAxis({{ forloop.counter }}, 'x', 'ticks', this.value)">
+                                                            <option value="outside">Extérieur</option>
+                                                            <option value="inside">Intérieur</option>
+                                                            <option value="none">Aucune</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div class="mb-2">
+                                                        <label class="form-label">Longueur des graduations</label>
+                                                        <input type="number" class="form-control" id="xTickLength" min="0" max="20" value="5"
+                                                               onchange="updateAxis({{ forloop.counter }}, 'x', 'ticklen', this.value)">
+                                                    </div>
+
+                                                    <div class="mb-2">
+                                                        <label class="form-label">Épaisseur des graduations</label>
+                                                        <input type="number" class="form-control" id="xTickWidth" min="1" max="5" value="1"
+                                                               onchange="updateAxis({{ forloop.counter }}, 'x', 'tickwidth', this.value)">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <h6>Axe X</h6>
+                                                        <div class="mb-2">
+                                                            <label class="form-label">Échelle</label>
+                                                            <select class="form-select" id="xAxisType"
+                                                                    onchange="updateAxis({{ forloop.counter }}, 'x', 'type', this.value)">
+                                                                <option value="linear">Linéaire</option>
+                                                                <option value="log">Logarithmique</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="mb-2">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox" id="xShowGrid" checked
+                                                                       onchange="updateAxis({{ forloop.counter }}, 'x', 'showgrid', this.checked)">
+                                                                <label class="form-check-label">Afficher la grille</label>
+                                                            </div>
+                                                        </div>
+                                                        <div class="mb-2">
+                                                            <label class="form-label">Couleur de la grille</label>
+                                                            <input type="color" class="form-control form-control-color" id="xGridColor"
+                                                                   onchange="updateAxis({{ forloop.counter }}, 'x', 'gridcolor', this.value)">
+                                                        </div>
+                                                        <div class="mb-2">
+                                                            <label class="form-label">Style de la grille</label>
+                                                            <select class="form-select" id="xGridStyle"
+                                                                    onchange="updateAxis({{ forloop.counter }}, 'x', 'gridstyle', this.value)">
+                                                                <option value="solid">Solide</option>
+                                                                <option value="dashed">Tirets</option>
+                                                                <option value="dotted">Pointillés</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="mb-2">
+                                                            <label class="form-label">Espacement des repères</label>
+                                                            <input type="number" class="form-control" id="xDtick"
+                                                                   onchange="updateAxis({{ forloop.counter }}, 'x', 'dtick', this.value)">
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Axe Y -->
+                                                    <div class="mb-2">
+                                                        <label class="form-label">Titre de l'axe</label>
+                                                        <input type="text" class="form-control" id="yAxisTitle"
+                                                               onchange="updateAxisTitle({{ forloop.counter }}, 'y', this.value)">
+                                                    </div>
+
+                                                    <div class="mb-2">
+                                                        <label class="form-label">Taille des graduations</label>
+                                                        <input type="number" class="form-control" id="yTickSize" min="1" max="20"
+                                                               onchange="updateTickSize({{ forloop.counter }}, 'y', this.value)">
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <label class="form-label">Position des graduations</label>
+                                                        <select class="form-select" id="yTickPosition"
+                                                                onchange="updateAxis({{ forloop.counter }}, 'y', 'ticks', this.value)">
+                                                            <option value="outside">Extérieur</option>
+                                                            <option value="inside">Intérieur</option>
+                                                            <option value="none">Aucune</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div class="mb-2">
+                                                        <label class="form-label">Longueur des graduations</label>
+                                                        <input type="number" class="form-control" id="yTickLength" min="0" max="20" value="5"
+                                                               onchange="updateAxis({{ forloop.counter }}, 'y', 'ticklen', this.value)">
+                                                    </div>
+
+                                                    <div class="mb-2">
+                                                        <label class="form-label">Épaisseur des graduations</label>
+                                                        <input type="number" class="form-control" id="yTickWidth" min="1" max="5" value="1"
+                                                               onchange="updateAxis({{ forloop.counter }}, 'y', 'tickwidth', this.value)">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <h6>Axe Y</h6>
+                                                        <div class="mb-2">
+                                                            <label class="form-label">Échelle</label>
+                                                            <select class="form-select" id="yAxisType"
+                                                                    onchange="updateAxis({{ forloop.counter }}, 'y', 'type', this.value)">
+                                                                <option value="linear">Linéaire</option>
+                                                                <option value="log">Logarithmique</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="mb-2">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox" id="yShowGrid" checked
+                                                                       onchange="updateAxis({{ forloop.counter }}, 'y', 'showgrid', this.checked)">
+                                                                <label class="form-check-label">Afficher la grille</label>
+                                                            </div>
+                                                        </div>
+                                                        <div class="mb-2">
+                                                            <label class="form-label">Couleur de la grille</label>
+                                                            <input type="color" class="form-control form-control-color" id="yGridColor"
+                                                                   onchange="updateAxis({{ forloop.counter }}, 'y', 'gridcolor', this.value)">
+                                                        </div>
+                                                        <div class="mb-2">
+                                                            <label class="form-label">Style de la grille</label>
+                                                            <select class="form-select" id="yGridStyle"
+                                                                    onchange="updateAxis({{ forloop.counter }}, 'y', 'gridstyle', this.value)">
+                                                                <option value="solid">Solide</option>
+                                                                <option value="dashed">Tirets</option>
+                                                                <option value="dotted">Pointillés</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="mb-2">
+                                                            <label class="form-label">Espacement des repères</label>
+                                                            <input type="number" class="form-control" id="yDtick"
+                                                                   onchange="updateAxis({{ forloop.counter }}, 'y', 'dtick', this.value)">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- Onglet custom -->
+                                            <div class="tab-pane fade" id="customTab">
+                                                <div class="row g-3">
+                                                    <!-- Ajout du sélecteur de couleur -->
+                                                    <div class="col-12 mb-3">
+                                                        <div class="d-flex align-items-center">
+                                                            <label class="form-label me-2 mb-0">Sélecteur de couleur:</label>
+                                                            <input type="color" id="colorPicker" class="form-control form-control-color me-2">
+                                                            <input type="text" id="hexColor" class="form-control" style="max-width: 100px;" readonly>
+                                                            <button type="button" class="btn btn-outline-secondary ms-2" onclick="copyHexColor()">
+                                                                <i class="fas fa-copy"></i> Copier
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <!-- Sélecteur de police -->
+                                                    <div class="col-12 mb-3">
+                                                        <div class="d-flex align-items-center">
+                                                            <label class="form-label me-2 mb-0">Police:</label>
+                                                            <select id="fontSelector" class="form-select me-2" style="max-width: 200px;">
+                                                                <option value="Arial, sans-serif">Arial</option>
+                                                                <option value="Times New Roman, serif">Times New Roman</option>
+                                                                <option value="Helvetica, Arial, sans-serif">Helvetica</option>
+                                                                <option value="Roboto, Arial, sans-serif">Roboto</option>
+                                                                <option value="Open Sans, Arial, sans-serif">Open Sans</option>
+                                                                <option value="Lato, Arial, sans-serif">Lato</option>
+                                                                <option value="Georgia, serif">Georgia</option>
+                                                                <option value="Courier New, monospace">Courier New</option>
+                                                                <option value="Verdana, sans-serif">Verdana</option>
+                                                                <option value="Tahoma, sans-serif">Tahoma</option>
+                                                            </select>
+                                                            <input type="text" id="fontString" class="form-control" style="max-width: 300px;" readonly>
+                                                            <button type="button" class="btn btn-outline-secondary ms-2" onclick="copyFontString()">
+                                                                <i class="fas fa-copy"></i> Copier
+                                                            </button>
+                                                            <!-- Aperçu de la police -->
+                                                            <div id="fontPreview" class="ms-3 p-2 border rounded" style="min-width: 200px;">
+                                                                <input type="text" class="form-control border-0" value="Exemple de texte"
+                                                                       onchange="updatePreviewText(this.value)">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-12">
+                                                        <div class="d-flex justify-content-end mb-2">
+                                                            <button type="button" class="btn btn-outline-secondary me-2" onclick="refreshTemplateJson({{ forloop.counter }})">
+                                                                <i class="fas fa-sync"></i> Actualiser
+                                                            </button>
+                                                            <button type="button" class="btn btn-outline-primary me-2" onclick="applyTemplateJson({{ forloop.counter }})">
+                                                                <i class="fas fa-check"></i> Appliquer
+                                                            </button>
+                                                            <button type="button" class="btn btn-outline-success me-2" onclick="saveTemplateJson()">
+                                                                <i class="fas fa-save"></i> Sauvegarder
+                                                            </button>
+                                                            <button type="button" class="btn btn-outline-info" onclick="loadTemplateJson()">
+                                                                <i class="fas fa-folder-open"></i> Charger
+                                                            </button>
+                                                        </div>
+                                                        <textarea id="templateJson" class="form-control" style="height: 400px; font-family: monospace;"></textarea>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- Onglet objets -->
+                                            <div class="tab-pane fade" id="objectsTab">
+                                                <div class="row g-3">
+                                                    <div class="col-12 mb-3">
+                                                        <div class="btn-group">
+                                                            <button type="button" class="btn btn-outline-primary" onclick="addText({{ forloop.counter }})">
+                                                                <i class="fas fa-font"></i> Ajouter Texte
+                                                            </button>
+                                                            <button type="button" class="btn btn-outline-primary" onclick="addImage({{ forloop.counter }})">
+                                                                <i class="fas fa-image"></i> Ajouter Image
+                                                            </button>
+                                                            <button type="button" class="btn btn-outline-danger" onclick="deleteSelectedObject({{ forloop.counter }})">
+                                                                <i class="fas fa-trash"></i> Supprimer
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Liste des objets -->
+                                                    <div class="col-12">
+                                                        <table class="table table-sm">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Type</th>
+                                                                    <th>Contenu</th>
+                                                                    <th>Position X</th>
+                                                                    <th>Position Y</th>
+                                                                    <th>Taille</th>
+                                                                    <th>Opacité</th>
+                                                                    <th>Style</th>
+                                                                    <th>Actions</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody id="objectsList">
+                                                                <!-- Les objets seront ajoutés ici dynamiquement -->
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                                <!-- Fit Report -->
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Rapport de Fit</h6>
+                                        <button class="btn btn-sm btn-outline-secondary copy-button"
+                                                onclick="copyReport('fitReport-{{ forloop.counter }}')">
+                                            <i class="fas fa-copy"></i> Copier
+                                        </button>
+                                        <div class="report-container" id="fitReport-{{ forloop.counter }}">
+                                            <pre>{{ fit.fit_report }}</pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <!-- Help Modal -->
+                <div class="modal fade" id="helpModal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">{{ models_info.help.title }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                {% for section in models_info.help.sections %}
+                                    <h6>{{ section.title }}</h6>
+
+                                    {% if section.type == 'list' %}
+                                        <ul>
+                                            {% for item in section.items %}
+                                                <li>{% if item.code %}<code>{{ item.code }}</code>: {% endif %}{{ item.text }}</li>
+                                            {% endfor %}
+                                        </ul>
+
+                                    {% elif section.type == 'model_params' %}
+                                        {% for model, params in section.items.items %}
+                                            <div class="mb-2">
+                                                <strong><code>{{ model }}</code>:</strong>
+                                                <ul>
+                                                    {% with param_list=params|split:"|" %}
+                                                        {% for param in param_list %}
+                                                            <li>{{ param|strip }}</li>
+                                                        {% endfor %}
+                                                    {% endwith %}
+                                                </ul>
+                                            </div>
+                                        {% endfor %}
+
+                                    {% elif section.type == 'code_list' %}
+                                        <ul>
+                                            {% for item in section.items %}
+                                                <li><code>{{ item }}</code></li>
+                                            {% endfor %}
+                                        </ul>
+
+                                    {% elif section.type == 'inline_list' %}
+                                        <p>{{ section.items|join:", " }}</p>
+                                    {% endif %}
+
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- une modal de prévisualisation -->
+                <div class="modal fade" id="previewModal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Prévisualisation des données</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label class="form-label">Paramètres d'importation</label>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Séparateur</label>
+                                            <select class="form-select" id="separatorSelect">
+                                                <option value="auto">Auto-détection</option>
+                                                <option value="tab">Tabulation</option>
+                                                <option value="space">Espace</option>
+                                                <option value="comma">Virgule</option>
+                                                <option value="semicolon">Point-virgule</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Décimales</label>
+                                            <select class="form-select" id="decimalSelect">
+                                                <option value="auto">Auto-détection</option>
+                                                <option value="point">Point</option>
+                                                <option value="comma">Virgule</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm" id="previewTable">
+                                        <thead>
+                                            <tr></tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                                <button type="button" class="btn btn-primary" onclick="importPreviewedData()">Importer</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+   </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+       // Variables globales pour la prévisualisation
+        let previewData = null;
+        let previewModal = null;
+        // POUR LA PAGE DE FIT
+        let pages = [[]];  // Tableau de pages
+        let currentPage = 0;
+        let columnCount = 2;
+        let columnHeaders = ['X', 'Y'];
+        let selectionStart = null;
+        let selectionEnd = null;
+        let isSelecting = false;
+        let selectedCells = new Set();
+        let scrollInterval = null;
+        let lastKnownMouseY = 0;
+        let plotObjects = [];
+        let selectedObjectIndex = -1;
+        let saveTimeout;
+        // Variables globales pour suivre les colonnes sélectionnées
+        let currentXColumn = 0;
+        let currentYColumn = 1;
+        let columnExpressions = {};
+
+        // INTERVALES
+        let fitRange = {
+                min: null,
+                max: null,
+                enabled: false
+            };
+
+        // EDITEUR D EXPRESSION POUR LES COLONNES
+        function updateColumnExpression(columnIndex, expression) {
+            columnExpressions[columnIndex] = expression;
+            evaluateExpressions();
+            updateHiddenInput();
+        }
+
+        function evaluateExpressions() {
+            // Parcourir toutes les colonnes avec des expressions
+            Object.entries(columnExpressions).forEach(([columnIndex, expression]) => {
+                try {
+                    // Remplacer les références aux colonnes par leurs valeurs
+                    const evaluatedData = pages[currentPage].map(row => {
+                        let expr = expression;
+                        // Remplacer les références (ex: page_no_1:Column1)
+                        expr = expr.replace(/page_no_(\d+):([^'"\s+\-*\/()]+)/g, (match, pageNum, colName) => {
+                            const pageIndex = parseInt(pageNum) - 1;
+                            const colIndex = columnHeaders.findIndex(h => h === colName);
+                            if (colIndex === -1) return '0';
+                            return row[colIndex];
+                        });
+
+                        // Évaluer l'expression
+                        return Function('"use strict";return (' + expr + ')')();
+                    });
+
+                    // Mettre à jour la colonne avec les nouvelles valeurs
+                    pages[currentPage].forEach((row, rowIndex) => {
+                        row[columnIndex] = evaluatedData[rowIndex];
+                    });
+                } catch (error) {
+                    console.error(`Erreur d'évaluation pour la colonne ${columnIndex}:`, error);
+                }
+            });
+
+            renderCurrentPage();
+        }
+
+        function showExpressionHelp() {
+            const helpContent = `
+                <h5>Syntaxe des expressions</h5>
+                <p>Utilisez la syntaxe suivante pour référencer les colonnes :</p>
+                <pre>page_no_[numéro]:nom_colonne</pre>
+
+                <h5>Exemples :</h5>
+                <ul>
+                    <li>4 * page_no_1:X</li>
+                    <li>sin(page_no_1:Y) + cos(page_no_2:Z)</li>
+                    <li>sqrt(pow(page_no_1:X, 2) + pow(page_no_1:Y, 2))</li>
+                </ul>
+
+                <h5>Fonctions disponibles :</h5>
+                <ul>
+                    <li>Mathématiques : sin, cos, tan, sqrt, pow, exp, log</li>
+                    <li>Opérateurs : +, -, *, /, ^</li>
+                </ul>
+            `;
+
+            // Créer et afficher une modal Bootstrap
+            const modal = new bootstrap.Modal(document.createElement('div'));
+            modal.element.className = 'modal expression-help-modal';
+            modal.element.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Aide sur les expressions</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">${helpContent}</div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal.element);
+            modal.show();
+        }
+
+        // SELECTEUR DE COLONNE
+        // Fonction pour mettre à jour les sélecteurs de colonnes
+        function updateColumnSelectors() {
+            const xSelect = document.getElementById('xColumnSelect');
+            const ySelect = document.getElementById('yColumnSelect');
+
+            console.log('Début updateColumnSelectors - currentXColumn:', currentXColumn, 'currentYColumn:', currentYColumn);
+
+            // Sauvegarder les valeurs actuelles
+            const savedXColumn = currentXColumn;
+            const savedYColumn = currentYColumn;
+
+            // Vider les sélecteurs
+            xSelect.innerHTML = '';
+            ySelect.innerHTML = '';
+
+            // Ajouter les options basées sur les en-têtes de colonnes
+            columnHeaders.forEach((header, index) => {
+                const xOption = document.createElement('option');
+                const yOption = document.createElement('option');
+
+                xOption.value = index;
+                yOption.value = index;
+                xOption.textContent = header;
+                yOption.textContent = header;
+
+                xSelect.appendChild(xOption);
+                ySelect.appendChild(yOption);
+            });
+
+            // Restaurer les valeurs sauvegardées
+            xSelect.value = savedXColumn;
+            ySelect.value = savedYColumn;
+            currentXColumn = savedXColumn;
+            currentYColumn = savedYColumn;
+
+            console.log('Fin updateColumnSelectors - xSelect:', xSelect.value, 'ySelect:', ySelect.value);
+
+            // Mettre à jour les titres des axes
+            document.querySelectorAll('[id^="plotly-div-"]').forEach(plot => {
+                const plotIndex = plot.id.split('-')[2];
+                Plotly.relayout(plot, {
+                    'xaxis.title.text': columnHeaders[savedXColumn],
+                    'yaxis.title.text': columnHeaders[savedYColumn]
+                });
+            });
+        }
+        // Nouvelle fonction pour mettre à jour les titres des axes selon les sélecteurs
+        function updateAxisTitlesFromSelectors() {
+            const xSelect = document.getElementById('xColumnSelect');
+            const ySelect = document.getElementById('yColumnSelect');
+
+            if (!xSelect || !ySelect) return;
+
+            const xTitle = xSelect.options[xSelect.selectedIndex].text;
+            const yTitle = ySelect.options[ySelect.selectedIndex].text;
+
+            // Mettre à jour les titres des axes pour tous les graphiques
+            document.querySelectorAll('[id^="plotly-div-"]').forEach(plot => {
+                const plotIndex = plot.id.split('-')[2];
+                syncAxisTitles(plotIndex, 'x', xTitle);
+                syncAxisTitles(plotIndex, 'y', yTitle);
+            });
+        }
+
+        // Fonction pour charger l'état d'une session
+        function loadSessionState(sessionId) {
+            fetch(`/load-session-state/${sessionId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const state = data.state;
+
+                    // Restaurer les objets personnalisés
+                    plotObjects = state.custom_objects;
+                    refreshObjectsList();
+
+                    // Restaurer le template
+                    document.getElementById('templateJson').value = JSON.stringify(state.template, null, 2);
+
+                    // Restaurer la configuration du graphique
+                    Plotly.newPlot('plotly-div', state.plot_config.data, state.plot_config.layout);
+
+                    showNotification('Session chargée');
+                }
+            });
+        }
+
+        // Ajouter un écouteur pour sauvegarder automatiquement
+
+        function autoSave() {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                const currentSessionId = document.getElementById('current-session-id').value;
+                if (currentSessionId) {
+                    saveSessionState(currentSessionId);
+                }
+            }, 2000);
+        }
+
+
+        // Fonction pour sauvegarder l'état de la session
+        function saveSessionState(sessionId) {
+            const state = {
+                custom_objects: plotObjects,
+                template: getCurrentTemplate(),
+                plot_config: {
+                    data: plotDiv.data,
+                    layout: plotDiv.layout
+                }
+            };
+
+            fetch('/save-session-state/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    ...state
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Session sauvegardée');
+                }
+            });
+        }
+
+        // Fonction pour sauvegarder l'état complet
+        function saveCompleteState() {
+            const state = {
+                data: {
+                    headers: columnHeaders,
+                    pages: pages,
+                    active_page: currentPage
+                },
+                custom_objects: plotObjects,
+                template: getCurrentTemplate(),
+                plot_config: {
+                    data: plotDiv.data,
+                    layout: plotDiv.layout
+                }
+            };
+
+            // Sauvegarder via AJAX
+            fetch('/save-session-state/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(state)
+            });
+        }
+
+        function createNewSession() {
+            const name = prompt("Nom de la session (optionnel):");
+            if (name !== null) {
+                fetch('{% url "create_session" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({ name: name })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = `{% url 'fit' %}?session_id=${data.session_id}`;
+                    }
+                });
+            }
+        }
+
+        function deleteSession(sessionId, event) {
+            event.preventDefault();
+            if (confirm("Êtes-vous sûr de vouloir supprimer cette session ?")) {
+                fetch(`{% url "delete_session" %}?session_id=${sessionId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    }
+                });
+            }
+        }
+
+        // INTERVAL
+        function updateFitRange() {
+            const minInput = document.getElementById('fitRangeMin');
+            const maxInput = document.getElementById('fitRangeMax');
+            const useRange = document.getElementById('useFitRange');
+            const hiddenInput = document.getElementById('id_fit_range');
+
+            // Ne pas désactiver les champs, juste gérer si l'intervalle est utilisé ou non
+            const isEnabled = useRange.checked;
+
+            fitRange = {
+                min: minInput.value ? parseFloat(minInput.value) : null,
+                max: maxInput.value ? parseFloat(maxInput.value) : null,
+                enabled: isEnabled
+            };
+
+            hiddenInput.value = JSON.stringify(fitRange);
+        }
+
+        function resetFitRange() {
+            const minInput = document.getElementById('fitRangeMin');
+            const maxInput = document.getElementById('fitRangeMax');
+            const useRange = document.getElementById('useFitRange');
+
+            minInput.value = '';
+            maxInput.value = '';
+            useRange.checked = false;
+            updateFitRange();
+        }
+
+        // Fonction pour suggérer automatiquement l'intervalle basé sur les données
+        function suggestFitRange() {
+            if (!pages[currentPage] || pages[currentPage].length === 0) return;
+
+            const xValues = pages[currentPage]
+                .map(row => parseFloat(row[0]))
+                .filter(x => !isNaN(x));
+
+            if (xValues.length === 0) return;
+
+            const min = Math.min(...xValues);
+            const max = Math.max(...xValues);
+
+            document.getElementById('fitRangeMin').value = min;
+            document.getElementById('fitRangeMax').value = max;
+            updateFitRange();
+        }
+
+        // POUR UPLOAD FICHIER
+        // Fonction pour gérer l'upload de fichier
+        function handleFileUpload(input) {
+            const file = input.files[0];
+            if (!file) {
+                console.log('Aucun fichier sélectionné');
+                return;
+            }
+
+            console.log('Fichier sélectionné:', file.name);
+
+            if (file.size > 5000000) {
+                alert('Le fichier est trop volumineux. Taille maximum : 5MB');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    console.log('Lecture du fichier réussie');
+                    previewData = e.target.result;
+
+                    // Vérifier que la modal existe
+                    if (!previewModal) {
+                        console.error('Modal non initialisée');
+                        alert('Erreur lors de l\'initialisation de la prévisualisation');
+                        return;
+                    }
+
+                    // Détecter automatiquement les paramètres
+                    const separator = detectSeparator(previewData);
+                    const decimal = detectDecimalSeparator(previewData);
+
+                    // Mettre à jour les sélecteurs
+                    document.getElementById('separatorSelect').value = separator;
+                    document.getElementById('decimalSelect').value = decimal;
+
+                    // Mettre à jour la prévisualisation
+                    updatePreview();
+
+                    // Afficher la modal
+                    previewModal.show();
+                } catch (error) {
+                    console.error('Erreur lors du traitement:', error);
+                    alert('Erreur lors du traitement du fichier');
+                }
+            };
+
+            reader.onerror = function(e) {
+                console.error('Erreur lors de la lecture du fichier:', e);
+                alert('Erreur lors de la lecture du fichier');
+            };
+
+            reader.readAsText(file);
+        }
+
+        // Fonction pour détecter le séparateur
+        function detectSeparator(content) {
+            const firstLine = content.split('\n')[0];
+            const separators = {
+                tab: '\t',
+                comma: ',',
+                semicolon: ';',
+                space: ' '
+            };
+
+            let maxCount = 0;
+            let bestSeparator = 'tab';
+
+            for (const [key, sep] of Object.entries(separators)) {
+                const count = (firstLine.match(new RegExp(sep, 'g')) || []).length;
+                if (count > maxCount) {
+                    maxCount = count;
+                    bestSeparator = key;
+                }
+            }
+
+            return bestSeparator;
+        }
+
+        // Fonction pour détecter le séparateur décimal
+        function detectDecimalSeparator(content) {
+            const numbers = content.match(/-?\d+[,\.]\d+/g) || [];
+            let commaCount = 0;
+            let pointCount = 0;
+
+            numbers.forEach(num => {
+                if (num.includes(',')) commaCount++;
+                if (num.includes('.')) pointCount++;
+            });
+
+            return commaCount > pointCount ? 'comma' : 'point';
+        }
+
+        // Fonction pour montrer la prévisualisation
+        function showPreview(content) {
+            if (!previewModal) {
+                console.error('Modal non initialisée');
+                return;
+            }
+
+            // Détecter les paramètres
+            const separator = detectSeparator(content);
+            const decimal = detectDecimalSeparator(content);
+
+            // Mettre à jour les sélecteurs
+            document.getElementById('separatorSelect').value = separator;
+            document.getElementById('decimalSelect').value = decimal;
+
+            // Mettre à jour la prévisualisation
+            updatePreview();
+
+            // Afficher la modal
+            previewModal.show();
+        }
+
+        // Fonction pour mettre à jour la prévisualisation
+        function updatePreview() {
+            if (!previewData) return;
+
+            const separator = document.getElementById('separatorSelect').value;
+            const decimal = document.getElementById('decimalSelect').value;
+
+            // Obtenir le séparateur réel
+            const sep = {
+                tab: '\t',
+                space: ' ',
+                comma: ',',
+                semicolon: ';'
+            }[separator] || '\t';
+
+            // Traiter les données
+            const lines = previewData.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+
+            // Limiter à 10 lignes pour la prévisualisation
+            const previewLines = lines.slice(0, 10);
+
+            // Mettre à jour le tableau de prévisualisation
+            const table = document.getElementById('previewTable');
+            const thead = table.querySelector('thead tr');
+            const tbody = table.querySelector('tbody');
+
+            // Vider le tableau
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+
+            // Ajouter les en-têtes
+            const firstLine = previewLines[0].split(sep);
+            firstLine.forEach((_, index) => {
+                const th = document.createElement('th');
+                th.textContent = `Colonne ${index + 1}`;
+                thead.appendChild(th);
+            });
+
+            // Ajouter les données
+            previewLines.forEach(line => {
+                const tr = document.createElement('tr');
+                const values = line.split(sep).map(value => {
+                    // Convertir les nombres si nécessaire
+                    if (decimal === 'comma' && value.includes(',')) {
+                        value = value.replace(',', '.');
+                    }
+                    const num = parseFloat(value);
+                    return isNaN(num) ? value : num;
+                });
+
+                values.forEach(value => {
+                    const td = document.createElement('td');
+                    td.textContent = value;
+                    tr.appendChild(td);
+                });
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Fonction pour importer les données prévisualisées
+        function importPreviewedData() {
+            if (!previewData) return;
+
+            const separator = document.getElementById('separatorSelect').value;
+            const decimal = document.getElementById('decimalSelect').value;
+
+            const sep = {
+                tab: '\t',
+                space: ' ',
+                comma: ',',
+                semicolon: ';'
+            }[separator] || '\t';
+
+            try {
+                // Traiter les données
+                const rows = previewData.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0)
+                    .map(line => {
+                        return line.split(sep).map(value => {
+                            if (decimal === 'comma' && value.includes(',')) {
+                                value = value.replace(',', '.');
+                            }
+                            const num = parseFloat(value);
+                            return isNaN(num) ? value : num;
+                        });
+                    })
+                    .filter(row => row.length >= 2 &&
+                                 typeof row[0] === 'number' &&
+                                 typeof row[1] === 'number');
+
+                if (rows.length === 0) {
+                    alert('Aucune donnée numérique valide trouvée dans le fichier');
+                    return;
+                }
+
+                // Mettre à jour les données
+                pages[currentPage] = rows;
+                // Ajuster le nombre de colonnes si nécessaire
+                columnCount = Math.max(columnCount, rows[0].length);
+                while (columnHeaders.length < columnCount) {
+                    columnHeaders.push(`Colonne ${columnHeaders.length + 1}`);
+                }
+                renderCurrentPage();
+                updateHiddenInput();
+
+                // Fermer la modal et afficher un message de succès
+                previewModal.hide();
+                alert(`Importation réussie : ${rows.length} lignes importées`);
+
+            } catch (err) {
+                console.error('Erreur lors de l\'importation:', err);
+                alert('Erreur lors de l\'importation des données');
+            }
+        }
+
+        // Fonction pour gérer la sélection
+        function handleSelection(e, cell, rowIndex, colIndex) {
+            if (e.type === 'mousedown') {
+                isSelecting = true;
+                selectionStart = { row: rowIndex, col: colIndex };
+                selectionEnd = { row: rowIndex, col: colIndex };
+                selectedCells.clear();
+                updateSelection();
+
+                // Démarrer l'intervalle de défilement
+                if (!scrollInterval) {
+                    scrollInterval = setInterval(() => {
+                        if (isSelecting) {
+                            autoScroll({ clientY: lastKnownMouseY });
+                        }
+                    }, 16); // Défilement toutes les 50ms
+                }
+
+            } else if (e.type === 'mousemove' && isSelecting) {
+                selectionEnd = { row: rowIndex, col: colIndex };
+                updateSelection();
+                autoScroll(e);
+            }
+        }
+
+
+        // Fonction pour mettre à jour la sélection visuelle
+        function updateSelection() {
+            selectedCells.clear();
+            const minRow = Math.min(selectionStart.row, selectionEnd.row);
+            const maxRow = Math.max(selectionStart.row, selectionEnd.row);
+            const minCol = Math.min(selectionStart.col, selectionEnd.col);
+            const maxCol = Math.max(selectionStart.col, selectionEnd.col);
+
+            for (let i = minRow; i <= maxRow; i++) {
+                for (let j = minCol; j <= maxCol; j++) {
+                    selectedCells.add(`${i}-${j}`);
+                }
+            }
+
+            // Mettre à jour l'apparence
+            document.querySelectorAll('#dataTable td').forEach(td => {
+                const pos = td.dataset.pos;
+                if (pos) {
+                    td.classList.toggle('cell-selected', selectedCells.has(pos));
+                }
+            });
+        }
+
+        // Fonction pour copier la sélection
+        function copySelection() {
+            if (selectedCells.size === 0) return;
+
+            const minRow = Math.min(...Array.from(selectedCells).map(pos => parseInt(pos.split('-')[0])));
+            const maxRow = Math.max(...Array.from(selectedCells).map(pos => parseInt(pos.split('-')[0])));
+            const minCol = Math.min(...Array.from(selectedCells).map(pos => parseInt(pos.split('-')[1])));
+            const maxCol = Math.max(...Array.from(selectedCells).map(pos => parseInt(pos.split('-')[1])));
+
+            let copyText = '';
+            for (let i = minRow; i <= maxRow; i++) {
+                let row = [];
+                for (let j = minCol; j <= maxCol; j++) {
+                    if (selectedCells.has(`${i}-${j}`)) {
+                        row.push(pages[currentPage][i][j]);
+                    }
+                }
+                copyText += row.join('\t') + '\n';
+            }
+
+            navigator.clipboard.writeText(copyText);
+        }
+
+        // Fonction pour coller dans la sélection
+        function pasteIntoSelection(e) {
+            if (selectedCells.size === 0) return;
+
+            navigator.clipboard.readText().then(text => {
+                const rows = text.trim().split('\n');
+                const pasteData = rows.map(row => row.split('\t'));
+
+                const minRow = Math.min(...Array.from(selectedCells).map(pos => parseInt(pos.split('-')[0])));
+                const minCol = Math.min(...Array.from(selectedCells).map(pos => parseInt(pos.split('-')[1])));
+
+                pasteData.forEach((row, i) => {
+                    row.forEach((value, j) => {
+                        const targetRow = minRow + i;
+                        const targetCol = minCol + j;
+                        if (targetRow < pages[currentPage].length && targetCol < columnCount) {
+                            pages[currentPage][targetRow][targetCol] = isNaN(parseFloat(value)) ? value : parseFloat(value);
+                        }
+                    });
+                });
+
+                renderCurrentPage();
+            });
+        }
+
+        // Fonction pour supprimer la sélection
+        function deleteSelection() {
+            if (selectedCells.size === 0) return;
+
+            selectedCells.forEach(pos => {
+                const [row, col] = pos.split('-').map(Number);
+                if (pages[currentPage][row]) {
+                    pages[currentPage][row][col] = '';
+                }
+            });
+
+            renderCurrentPage();
+        }
+
+        function confirmNavigation(event) {
+            const expressionField = document.getElementById("id_expression");
+            if (expressionField.value.trim() !== "") {
+                const confirmLeave = confirm("Vous avez des données non enregistrées. Voulez-vous vraiment quitter ?");
+                if (!confirmLeave) {
+                    event.preventDefault();
+                }
+            }
+        }
+
+        function copyReport() {
+            const reportText = document.getElementById("fitReport").innerText;
+            navigator.clipboard.writeText(reportText).then(() => {
+                alert("Rapport copié dans le presse-papiers !");
+            });
+        }
+
+        {% if all_fits %}
+            {% for fit in all_fits %}
+                const plotData{{ forloop.counter }} = JSON.parse('{{ fit.plot_json|safe }}');
+
+                // S'assurer que les couleurs sont bien définies dans les données
+                plotData{{ forloop.counter }}.data.forEach(trace => {
+                    if (trace.line && trace.line.color) {
+                        console.log(`Trace ${trace.name} color: ${trace.line.color}`);
+                    }
+                    if (trace.marker && trace.marker.color) {
+                        console.log(`Trace ${trace.name} marker color: ${trace.marker.color}`);
+                    }
+                });
+
+                Plotly.newPlot('plotly-div-{{ forloop.counter }}',
+                    plotData{{ forloop.counter }}.data,
+                    plotData{{ forloop.counter }}.layout,
+                    plotData{{ forloop.counter }}.config
+                ).then(() => {
+                    initializeControls({{ forloop.counter }});
+                });
+            {% endfor %}
+        {% endif %}
+
+        function copyReport(reportId) {
+            const reportText = document.getElementById(reportId).innerText;
+            navigator.clipboard.writeText(reportText).then(() => {
+                alert("Rapport copié dans le presse-papiers !");
+            });
+        }
+
+        function updatePageIndicator() {
+            document.getElementById('pageIndicator').textContent = `Page ${currentPage + 1}/${pages.length}`;
+        }
+
+        // Fonction pour gérer le défilement automatique
+        function autoScroll(e) {
+            const container = document.querySelector('.data-container');
+            const containerRect = container.getBoundingClientRect();
+            const scrollSpeed = 25; // Augmenter la vitesse
+            const scrollMargin = 100; // Augmenter la zone de déclenchement
+
+            // Utiliser la dernière position connue de la souris si l'événement n'est pas disponible
+            const mouseY = e ? e.clientY : lastKnownMouseY;
+            lastKnownMouseY = mouseY; // Sauvegarder la position
+
+            const topDelta = mouseY - containerRect.top;
+            const bottomDelta = containerRect.bottom - mouseY;
+
+            if (topDelta < scrollMargin) {
+                container.scrollBy(0, -scrollSpeed);
+                return true; // Indique qu'un défilement a eu lieu
+            } else if (bottomDelta < scrollMargin) {
+                container.scrollBy(0, scrollSpeed);
+                return true; // Indique qu'un défilement a eu lieu
+            }
+            return false;
+        }
+
+        function renderCurrentPage() {
+            const table = document.querySelector('#dataTable');
+            table.innerHTML = ''; // Vider la table
+
+            // Créer l'en-tête
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            const expressionRow = document.createElement('tr'); // Nouvelle ligne pour les expressions
+
+            // Ajouter les en-têtes éditables
+            columnHeaders.forEach((header, index) => {
+                const th = document.createElement('th');
+                const headerInput = document.createElement('input');
+                headerInput.type = 'text';
+                headerInput.value = header;
+                headerInput.className = 'header-input';
+                headerInput.onchange = () => updateColumnHeader(index, headerInput.value);
+                th.appendChild(headerInput);
+
+                // Ajouter le champ d'expression
+                const expressionTh = document.createElement('th');
+                const expressionDiv = document.createElement('div');
+                expressionDiv.className = 'column-expression';
+
+                const expressionInput = document.createElement('input');
+                expressionInput.type = 'text';
+                expressionInput.className = 'expression-input form-control form-control-sm';
+                expressionInput.value = `page_no_${currentPage + 1}:${header}`; // Valeur initiale
+                expressionInput.dataset.columnIndex = index;
+                expressionInput.onchange = () => updateColumnExpression(index, expressionInput.value);
+
+                const helpIcon = document.createElement('i');
+                helpIcon.className = 'fas fa-question-circle ms-1';
+                helpIcon.style.cursor = 'pointer';
+                helpIcon.onclick = showExpressionHelp;
+
+                expressionDiv.appendChild(expressionInput);
+                expressionDiv.appendChild(helpIcon);
+                expressionTh.appendChild(expressionDiv);
+
+                headerRow.appendChild(th);
+                expressionRow.appendChild(expressionTh);
+            });
+
+            // Ajouter le bouton d'ajout de colonne
+            const addColumnTh = document.createElement('th');
+            const addColumnBtn = document.createElement('button');
+            addColumnBtn.type = 'button';
+            addColumnBtn.className = 'btn btn-sm btn-outline-secondary';
+            addColumnBtn.innerHTML = '<i class="fas fa-plus"></i>';
+            addColumnBtn.onclick = addColumn;
+            addColumnTh.appendChild(addColumnBtn);
+            headerRow.appendChild(addColumnTh);
+
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // Créer le corps du tableau
+            const tbody = document.createElement('tbody');
+            const pageData = pages[currentPage] || [];
+
+            pageData.forEach((row, rowIndex) => {
+                const tr = document.createElement('tr');
+                for (let i = 0; i < Math.max(columnCount, row.length); i++) {
+                    const td = document.createElement('td');
+                    td.dataset.pos = `${rowIndex}-${i}`;
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = row[i] !== undefined ? row[i] : '';
+                    input.onchange = () => updateData(rowIndex, i, input.value);
+
+                    // Événements de sélection sur la cellule
+                    td.addEventListener('mousedown', (e) => {
+                        // Empêcher l'input de prendre le focus immédiatement
+                        e.preventDefault();
+                        handleSelection(e, td, rowIndex, i);
+                    });
+
+                    // Ajouter l'événement mousedown sur l'input aussi
+                    input.addEventListener('mousedown', (e) => {
+                        e.preventDefault(); // Empêcher la sélection de texte immédiate
+                        handleSelection(e, td, rowIndex, i);
+                    });
+
+                    // Ajouter les événements mousemove sur les deux éléments
+                    const handleMove = (e) => {
+                        if (isSelecting) {
+                            handleSelection(e, td, rowIndex, i);
+                        }
+                    };
+                    td.addEventListener('mousemove', handleMove);
+                    input.addEventListener('mousemove', handleMove);
+
+                    td.appendChild(input);
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(tbody);
+            updatePageIndicator();
+            updateHiddenInput();
+            updateColumnSelectors();
+        }
+
+        function updateColumnHeader(index, value) {
+            const oldHeader = columnHeaders[index];
+            columnHeaders[index] = value;
+
+            // Mettre à jour les sélecteurs
+            const xSelect = document.getElementById('xColumnSelect');
+            const ySelect = document.getElementById('yColumnSelect');
+
+            if (xSelect && ySelect) {
+                // Mettre à jour les options des sélecteurs
+                [xSelect, ySelect].forEach(select => {
+                    const option = select.querySelector(`option[value="${index}"]`);
+                    if (option) {
+                        option.textContent = value;
+                    }
+                });
+
+                // Si cette colonne est sélectionnée, mettre à jour le titre de l'axe correspondant
+                if (parseInt(xSelect.value) === index || parseInt(ySelect.value) === index) {
+                    updateAxisTitlesFromSelectors();
+                }
+            }
+
+            // Mettre à jour les expressions qui référencent l'ancien nom
+            Object.entries(columnExpressions).forEach(([colIndex, expr]) => {
+                const oldRef = `page_no_${currentPage + 1}:${oldHeader}`;
+                const newRef = `page_no_${currentPage + 1}:${value}`;
+                columnExpressions[colIndex] = expr.replace(oldRef, newRef);
+            });
+
+            renderCurrentPage();
+            updateHiddenInput();
+            updateColumnSelectors();
+        }
+
+
+        // Vérifier l'intégrité des données
+        function checkDataIntegrity() {
+            const currentData = pages[currentPage];
+            console.log('Vérification des données:');
+            console.log('Nombre de lignes:', currentData.length);
+            currentData.forEach((row, index) => {
+                console.log(`Ligne ${index}:`, row);
+            });
+        }
+
+        function updateData(row, col, value) {
+            if (!pages[currentPage]) {
+                pages[currentPage] = [];
+            }
+
+            if (!pages[currentPage][row]) {
+                pages[currentPage][row] = new Array(Math.max(columnCount, col + 1)).fill('');
+            }
+
+            // S'assurer que la ligne a assez de colonnes
+            while (pages[currentPage][row].length <= col) {
+                pages[currentPage][row].push('');
+            }
+
+            // Convertir en nombre si possible
+            const numValue = parseFloat(value);
+            pages[currentPage][row][col] = isNaN(numValue) ? value : numValue;
+
+            console.log(`Mise à jour: ligne=${row}, col=${col}, valeur=${value}`);
+            updateHiddenInput();
+        }
+
+        // Modifier updateHiddenInput pour inclure les en-têtes
+        function updateHiddenInput() {
+            const dataInput = document.getElementById('id_data');
+            const activePageInput = document.getElementById('id_active_page');
+
+            // Récupérer les valeurs actuelles des sélecteurs
+            const xSelect = document.getElementById('xColumnSelect');
+            const ySelect = document.getElementById('yColumnSelect');
+
+            // S'assurer que les valeurs sont correctes
+            const xValue = parseInt(xSelect.value);
+            const yValue = parseInt(ySelect.value);
+
+            console.log('Avant mise à jour - currentXColumn:', currentXColumn, 'currentYColumn:', currentYColumn);
+            console.log('Valeurs des sélecteurs - X:', xSelect.value, 'Y:', ySelect.value);
+
+            const dataToSave = {
+                headers: columnHeaders,
+                pages: pages,
+                expressions: columnExpressions,
+                x_column: xValue,
+                y_column: yValue,
+                active_page: currentPage
+            };
+
+            console.log('Sauvegarde des données:', {
+                currentX: currentXColumn,
+                currentY: currentYColumn,
+                savedX: xValue,
+                savedY: yValue
+            });
+
+            dataInput.value = JSON.stringify(dataToSave);
+            activePageInput.value = currentPage;
+
+
+        }
+
+        function checkData() {
+            const currentData = pages[currentPage];
+            if (!currentData || currentData.length === 0) {
+                alert('Aucune donnée présente sur cette page');
+                return;
+            }
+
+            const validRows = currentData.filter(row =>
+                row.length >= 2 && row[0].trim() !== '' && row[1].trim() !== ''
+            );
+
+            alert(`Données détectées:
+            - Nombre total de lignes: ${currentData.length}
+            - Lignes valides: ${validRows.length}
+            - Colonnes: ${currentData[0]?.length || 0}
+
+            Les données semblent ${validRows.length > 0 ? 'valides' : 'invalides'} pour le fit.`);
+        }
+
+        function addPage() {
+            pages.splice(currentPage + 1, 0, []);
+            currentPage++;
+            renderCurrentPage();
+        }
+
+        function deletePage() {
+            if (pages.length <= 1) return;
+            if (!confirm('Êtes-vous sûr de vouloir supprimer cette page ?')) return;
+
+            pages.splice(currentPage, 1);
+            if (currentPage >= pages.length) currentPage = pages.length - 1;
+            renderCurrentPage();
+        }
+
+        function previousPage() {
+            if (currentPage > 0) {
+                currentPage--;
+                renderCurrentPage();
+            }
+        }
+
+        function nextPage() {
+            if (currentPage < pages.length - 1) {
+                currentPage++;
+                renderCurrentPage();
+            }
+        }
+
+        function addRow() {
+            if (!pages[currentPage]) pages[currentPage] = [];
+            pages[currentPage].push(new Array(columnCount).fill(''));
+            renderCurrentPage();
+        }
+
+        function addColumn() {
+            columnCount++;
+            columnHeaders.push(`Colonne ${columnCount}`);
+            pages.forEach(page => {
+                page.forEach(row => {
+                    row.push('');
+                });
+            });
+            renderCurrentPage();
+        }
+
+        function parseNumber(value) {
+            // Si la valeur est déjà un nombre, la retourner telle quelle
+            if (typeof value === 'number') return value;
+
+            // Si la valeur est une chaîne
+            if (typeof value === 'string') {
+                // Nettoyer la chaîne
+                const cleanValue = value.trim();
+
+                // Vérifier si c'est un nombre avec virgule
+                if (cleanValue.includes(',')) {
+                    // Vérifier qu'il n'y a qu'une seule virgule
+                    const commaCount = (cleanValue.match(/,/g) || []).length;
+                    if (commaCount === 1) {
+                        // Convertir la virgule en point
+                        const withDot = cleanValue.replace(',', '.');
+                        // Essayer de parser en nombre
+                        const num = parseFloat(withDot);
+                        if (!isNaN(num)) return num;
+                    }
+                }
+
+                // Essayer de parser directement en nombre
+                const num = parseFloat(cleanValue);
+                if (!isNaN(num)) return num;
+            }
+
+            // Si la conversion échoue, retourner la valeur d'origine
+            return value;
+        }
+
+        function pasteData() {
+            navigator.clipboard.readText().then(text => {
+
+                console.log('Données brutes collées:', text);
+
+                // Séparer en lignes
+                const rows = text.trim().split('\n')
+                    .map(row => row.trim())
+                    .filter(row => row !== '')
+                    .map(row => {
+                        // Diviser par tabulation ou espaces multiples
+                        const values = row.split(/[\t]+/);
+
+                        // Convertir chaque valeur
+                        return values.map(value => parseNumber(value));
+                    })
+                    .filter(row => {
+                        // Vérifier que la ligne a au moins 2 colonnes avec des nombres valides
+                        return row.length >= 2 &&
+                               typeof row[0] === 'number' &&
+                               typeof row[1] === 'number';
+                    });
+
+                if (rows.length === 0) {
+                    alert('Aucune donnée numérique valide trouvée dans le presse-papiers');
+                    return;
+                }
+
+
+                // Log pour le débogage
+                console.log('Données parsées:', rows);
+                console.log('Nombre de lignes valides:', rows.length);
+                if (rows.length > 0) {
+                    console.log('Exemple première ligne:', rows[0]);
+                    console.log('Exemple dernière ligne:', rows[rows.length - 1]);
+                }
+
+                // Mettre à jour les données
+                pages[currentPage] = rows;
+
+                // Ajuster le nombre de colonnes si nécessaire
+                columnCount = Math.max(columnCount, rows[0].length);
+                while (columnHeaders.length < columnCount) {
+                    columnHeaders.push(`Colonne ${columnHeaders.length + 1}`);
+                }
+
+                renderCurrentPage();
+                updateHiddenInput();
+
+                // Notification de succès
+                alert(`Importation réussie :\n- ${rows.length} lignes valides importées\n- Format des nombres corrigé automatiquement`);
+            }).catch(err => {
+                console.error('Erreur lors du collage:', err);
+                alert('Erreur lors du collage des données');
+            });
+        }
+
+
+        function validateData() {
+            const currentData = pages[currentPage];
+            if (!currentData || currentData.length === 0) {
+                return false;
+            }
+
+            // Vérifier que chaque ligne a au moins 2 colonnes avec des nombres valides
+            const validRows = currentData.filter(row => {
+                if (row.length < 2) return false;
+                return !isNaN(parseFloat(row[0])) && !isNaN(parseFloat(row[1]));
+            });
+
+            return validRows.length > 0;
+        }
+
+
+        // FONCTION POUR GRAPHIQUE TOUT JOLIE
+
+        // Nouvelle fonction pour synchroniser le titre du graphique
+        function syncGraphTitle(plotIndex, value) {
+            const plotDiv = document.getElementById(`plotly-div-${plotIndex}`);
+            const titleInput = document.getElementById('titleText');
+
+            // Mettre à jour le titre dans le graphique si la modification vient de l'input
+            if (document.activeElement === titleInput) {
+                const update = {
+                    title: {
+                        ...plotDiv.layout.title,
+                        text: value
+                    }
+                };
+                Plotly.relayout(plotDiv, update);
+            }
+            // Mettre à jour l'input si la modification vient du graphique
+            else if (titleInput.value !== value) {
+                titleInput.value = value;
+            }
+        }
+
+        // Fonction pour initialiser les contrôles avec les valeurs actuelles
+        function initializeControls(plotIndex) {
+            const plotDiv = document.getElementById(`plotly-div-${plotIndex}`);
+            const layout = plotDiv.layout;
+
+            // Initialisation du titre
+            if (layout.title) {
+                document.getElementById('titleText').value = layout.title.text || '';
+                document.getElementById('titleFont').value = layout.title.font?.family || 'Arial';
+                document.getElementById('titleSize').value = layout.title.font?.size || 14;
+                document.getElementById('titleColor').value = layout.title.font?.color || '#000000';
+                document.getElementById('titlePosition').value = layout.title.xanchor || 'center';
+            }
+
+            // Initialisation de la légende
+            if (layout.legend) {
+                document.getElementById('legendVisible').checked = layout.showlegend !== false;
+                document.getElementById('legendFont').value = layout.legend.font?.family || 'Arial';
+                document.getElementById('legendSize').value = layout.legend.font?.size || 10;
+                const legendPos = getLegendPosition(layout.legend);
+                document.getElementById('legendPosition').value = legendPos;
+            }
+
+            // Initialisation du sélecteur de courbes
+            const traceSelector = document.getElementById('traceSelector');
+            traceSelector.innerHTML = ''; // Vider les options existantes
+
+            // Ajouter les options pour chaque trace avec leur vrai nom
+            plotDiv.data.forEach((trace, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = trace.name || `Courbe ${index + 1}`;
+                traceSelector.appendChild(option);
+            });
+
+            // Initialisation des courbes
+            loadTraceSettings(plotIndex, 0);  // Charger les paramètres de la première courbe
+
+            // Initialisation des axes X
+            if (layout.xaxis) {
+                document.getElementById('xAxisType').value = layout.xaxis.type || 'linear';
+                document.getElementById('xShowGrid').checked = layout.xaxis.showgrid !== false;
+                if (layout.xaxis.gridcolor) {
+                    const color = layout.xaxis.gridcolor.startsWith('rgb') ?
+                        rgbToHex(...layout.xaxis.gridcolor.match(/\d+/g).map(Number)) :
+                        layout.xaxis.gridcolor;
+                    document.getElementById('xGridColor').value = color;
+                }
+                document.getElementById('xGridStyle').value = layout.xaxis.gridstyle || 'solid';
+                document.getElementById('xDtick').value = layout.xaxis.dtick || '';
+                document.getElementById('xAxisTitle').value = layout.xaxis.title?.text || '';
+                document.getElementById('xTickSize').value = layout.xaxis.tickfont?.size || 12;
+            }
+
+            // Initialisation des axes Y
+            if (layout.yaxis) {
+                document.getElementById('yAxisType').value = layout.yaxis.type || 'linear';
+                document.getElementById('yShowGrid').checked = layout.yaxis.showgrid !== false;
+                if (layout.yaxis.gridcolor) {
+                    const color = layout.yaxis.gridcolor.startsWith('rgb') ?
+                        rgbToHex(...layout.yaxis.gridcolor.match(/\d+/g).map(Number)) :
+                        layout.yaxis.gridcolor;
+                    document.getElementById('yGridColor').value = color;
+                }
+                document.getElementById('yGridStyle').value = layout.yaxis.gridstyle || 'solid';
+                document.getElementById('yDtick').value = layout.yaxis.dtick || '';
+                document.getElementById('yAxisTitle').value = layout.yaxis.title?.text || '';
+                document.getElementById('yTickSize').value = layout.yaxis.tickfont?.size || 12;
+            }
+
+            // Initialiser le sélecteur de couleur
+            initializeColorPicker();
+
+            // Initialiser le sélecteur de police
+            initializeFontSelector();
+
+            // Initialiser le drag & drop
+            initializeDragAndDrop(plotIndex);
+
+            // Initialiser la liste des objets
+            refreshObjectsList(plotIndex);
+
+            // Ajouter l'écouteur pour le textarea du template
+            const templateTextarea = document.getElementById('templateJson');
+            templateTextarea.addEventListener('keydown', function(e) {
+                // Permettre le Ctrl+V (ou Cmd+V sur Mac)
+                if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+                    // Laisser le comportement par défaut du collage
+                    return true;
+                }
+            });
+
+            // Ajouter les écouteurs pour les titres des axes et le titre
+            addTitleListeners(plotIndex);
+            addAxisTitleListeners(plotIndex);
+
+            // Synchroniser les titres initiaux
+            if (layout.xaxis?.title?.text) {
+                syncAxisTitles(plotIndex, 'x', layout.xaxis.title.text);
+            }
+            if (layout.yaxis?.title?.text) {
+                syncAxisTitles(plotIndex, 'y', layout.yaxis.title.text);
+            }
+
+            // Forcer la mise à jour des grilles si nécessaire
+            if (layout.xaxis?.showgrid) {
+                updateAxis(plotIndex, 'x', 'showgrid', true);
+            }
+            if (layout.yaxis?.showgrid) {
+                updateAxis(plotIndex, 'y', 'showgrid', true);
+            }
+            // Initialiser le JSON du template
+            refreshTemplateJson(plotIndex);
+        }
+
+        // Fonction pour obtenir la position actuelle de la légende
+        function getLegendPosition(legend) {
+            const y = legend.y > 0.5 ? 'top' : 'bottom';
+            const x = legend.x > 0.5 ? 'right' : 'left';
+            return `${y}-${x}`;
+        }
+
+        // Fonction mise à jour pour le titre
+        function updatePlotTitle(plotIndex, property, value) {
+            const plotDiv = document.getElementById(`plotly-div-${plotIndex}`);
+            const currentLayout = plotDiv.layout;
+            const update = { title: { ...currentLayout.title } };  // Préserver les propriétés existantes
+
+            switch(property) {
+                case 'text':
+                    update.title.text = value;
+                    syncGraphTitle(plotIndex, value);
+                    break;
+                case 'font':
+                    update.title.font = {
+                        ...currentLayout.title.font,
+                        family: value
+                    };
+                    break;
+                case 'size':
+                    update.title.font = {
+                        ...currentLayout.title.font,
+                        size: parseInt(value)
+                    };
+                    break;
+                case 'color':
+                    update.title.font = {
+                        ...currentLayout.title.font,
+                        color: value
+                    };
+                    break;
+                case 'position':
+                    update.title.x = value === 'center' ? 0.5 : (value === 'left' ? 0 : 1);
+                    update.title.xanchor = value;
+                    break;
+            }
+
+            Plotly.relayout(plotDiv, update);
+        }
+
+        function updatePlotLegend(plotIndex, property, value) {
+            const plotDiv = document.getElementById(`plotly-div-${plotIndex}`);
+            const currentLayout = plotDiv.layout;
+            const update = {};
+
+            switch(property) {
+                case 'visible':
+                    update.showlegend = value;
+                    break;
+                case 'font':
+                    update.legend = {
+                        ...currentLayout.legend,
+                        font: {
+                            ...currentLayout.legend.font,
+                            family: value
+                        }
+                    };
+                    break;
+                case 'size':
+                    update.legend = {
+                        ...currentLayout.legend,
+                        font: {
+                            ...currentLayout.legend.font,
+                            size: parseInt(value)
+                        }
+                    };
+                    break;
+                case 'position':
+                    const [y, x] = value.split('-');
+                    update.legend = {
+                        ...currentLayout.legend,
+                        yanchor: y,
+                        y: y === 'top' ? 0.99 : 0.01,
+                        xanchor: x,
+                        x: x === 'right' ? 0.99 : 0.01,
+                        font: currentLayout.legend.font  // Préserver la police actuelle
+                    };
+                    break;
+            }
+
+            Plotly.relayout(plotDiv, update);
+        }
+
+        function updatePlotTrace(plotIndex, property, value) {
+            const plotDiv = document.getElementById(`plotly-div-${plotIndex}`);
+            const traceIndex = parseInt(document.getElementById('traceSelector').value);
+            const currentTrace = plotDiv.data[traceIndex];
+            const update = {};
+
+            switch(property) {
+                case 'color':
+                    if (currentTrace.mode === 'markers') {
+                        update.marker = {
+                            ...currentTrace.marker,
+                            color: value
+                        };
+                    } else if (currentTrace.mode === 'lines' || currentTrace.mode === 'lines+markers') {
+                        update.line = {
+                            ...currentTrace.line,
+                            color: value
+                        };
+                        if (currentTrace.mode === 'lines+markers') {
+                            update.marker = {
+                                ...currentTrace.marker,
+                                color: value
+                            };
+                        }
+                    }
+                    break;
+                case 'width':
+                    update.line = {
+                        ...currentTrace.line,
+                        width: parseFloat(value)
+                    };
+                    break;
+                case 'style':
+                    update.line = {
+                        ...currentTrace.line,
+                        dash: value
+                    };
+                    break;
+                case 'opacity':
+                    update.opacity = parseFloat(value);
+                    break;
+            }
+
+            Plotly.restyle(plotDiv, update, [traceIndex]);
+        }
+
+        // Fonction mise à jour pour charger les paramètres d'une courbe
+        function loadTraceSettings(plotIndex, traceIndex) {
+            const plotDiv = document.getElementById(`plotly-div-${plotIndex}`);
+            const trace = plotDiv.data[traceIndex];
+
+            // Déterminer la couleur actuelle de la trace
+            let currentColor;
+
+            if (trace.mode === 'markers') {
+                // Pour les points (scatter)
+                currentColor = trace.marker.color;
+            } else if (trace.mode === 'lines' || trace.mode === 'lines+markers') {
+                // Pour les lignes
+                currentColor = trace.line.color;
+            }
+
+            // Si la couleur est au format RGB, la convertir en hex
+            if (currentColor && currentColor.startsWith('rgb')) {
+                currentColor = rgbToHex(...currentColor.match(/\d+/g).map(Number));
+            }
+
+
+            console.log(`Trace ${traceIndex} (${trace.name}):`, {
+                mode: trace.mode,
+                lineColor: trace.line?.color,
+                markerColor: trace.marker?.color,
+                currentColor: currentColor
+            });
+
+            document.getElementById('traceColor').value = currentColor || '#000000';
+            document.getElementById('traceWidth').value = trace.line?.width || 1;
+            document.getElementById('traceStyle').value = trace.line?.dash || 'solid';
+            document.getElementById('traceOpacity').value = trace.opacity || 1;
+        }
+
+        // Fonction utilitaire pour vérifier si une couleur est au format RGB
+        function isRgbColor(color) {
+            return typeof color === 'string' && color.startsWith('rgb');
+        }
+
+        // Fonction utilitaire pour convertir RGB en hex
+        function rgbToHex(r, g, b) {
+            if (!r || !g || !b) return '#dddddd'; // Valeur par défaut
+            return '#' + [r, g, b].map(x => {
+                const hex = parseInt(x).toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            }).join('');
+        }
+
+        // Fonction utilitaire pour convertir une couleur en format RGB
+        function parseColor(color) {
+            if (color.startsWith('rgb')) {
+                const rgb = color.match(/\d+/g);
+                if (rgb) {
+                    return rgbToHex(parseInt(rgb[0]), parseInt(rgb[1]), parseInt(rgb[2]));
+                }
+            }
+            return color;
+        }
+
+        function updateAxisTitle(plotIndex, axis, value) {
+            syncAxisTitles(plotIndex, axis, value);
+        }
+
+        // Nouvelle fonction pour initialiser les contrôles des axes
+        function initializeAxisControls(plotIndex) {
+            const plotDiv = document.getElementById(`plotly-div-${plotIndex}`);
+            const layout = plotDiv.layout;
+
+            // Axe X
+            if (layout.xaxis) {
+                document.getElementById('xAxisType').value = layout.xaxis.type || 'linear';
+                document.getElementById('xShowGrid').checked = layout.xaxis.showgrid !== false;
+                if (layout.xaxis.gridcolor) {
+                    const color = layout.xaxis.gridcolor.startsWith('rgb') ?
+                        rgbToHex(...layout.xaxis.gridcolor.match(/\d+/g).map(Number)) :
+                        layout.xaxis.gridcolor;
+                    document.getElementById('xGridColor').value = color;
+                }
+                document.getElementById('xGridStyle').value = layout.xaxis.gridstyle || 'solid';
+                document.getElementById('xDtick').value = layout.xaxis.dtick || '';
+                document.getElementById('xAxisTitle').value = layout.xaxis.title?.text || '';
+                document.getElementById('xTickSize').value = layout.xaxis.tickfont?.size || 12;
+
+                // Nouveaux contrôles pour les ticks
+                document.getElementById('xTickPosition').value = layout.xaxis.ticks || 'outside';
+                document.getElementById('xTickLength').value = layout.xaxis.ticklen || 5;
+                document.getElementById('xTickWidth').value = layout.xaxis.tickwidth || 1;
+
+                // Forcer la mise à jour de la grille si nécessaire
+                if (layout.xaxis.showgrid) {
+                    updateAxis(plotIndex, 'x', 'showgrid', true);
+                }
+            }
+
+            // Axe Y
+            if (layout.yaxis) {
+                document.getElementById('yAxisType').value = layout.yaxis.type || 'linear';
+                document.getElementById('yShowGrid').checked = layout.yaxis.showgrid !== false;
+                if (layout.yaxis.gridcolor) {
+                    const color = layout.yaxis.gridcolor.startsWith('rgb') ?
+                        rgbToHex(...layout.yaxis.gridcolor.match(/\d+/g).map(Number)) :
+                        layout.yaxis.gridcolor;
+                    document.getElementById('yGridColor').value = color;
+                }
+                document.getElementById('yGridStyle').value = layout.yaxis.gridstyle || 'solid';
+                document.getElementById('yDtick').value = layout.yaxis.dtick || '';
+                document.getElementById('yAxisTitle').value = layout.yaxis.title?.text || '';
+                document.getElementById('yTickSize').value = layout.yaxis.tickfont?.size || 12;
+
+                // Nouveaux contrôles pour les ticks
+                document.getElementById('yTickPosition').value = layout.yaxis.ticks || 'outside';
+                document.getElementById('yTickLength').value = layout.yaxis.ticklen || 5;
+                document.getElementById('yTickWidth').value = layout.yaxis.tickwidth || 1;
+
+                // Forcer la mise à jour de la grille si nécessaire
+                if (layout.yaxis.showgrid) {
+                    updateAxis(plotIndex, 'y', 'showgrid', true);
+                }
+            }
+        }
+
+        // Ajout d'une fonction spécifique pour la taille des graduations
+        function updateTickSize(plotIndex, axis, value) {
+            const plotDiv = document.getElementById(`plotly-div-${plotIndex}`);
+            const currentLayout = plotDiv.layout;
+            const axisName = `${axis}axis`;
+            const update = {};
+
+            update[axisName] = {
+                ...currentLayout[axisName],
+                tickfont: {
+                    ...currentLayout[axisName].tickfont,
+                    size: parseInt(value)
+                }
+            };
+
+            Plotly.relayout(plotDiv, update);
+        }
+
+        // Fonction pour mettre à jour les axes
+        function updateAxis(plotIndex, axis, property, value) {
+            const plotDiv = document.getElementById(`plotly-div-${plotIndex}`);
+            const currentLayout = plotDiv.layout;
+            const axisName = `${axis}axis`;
+            const update = {};
+
+            // Créer une copie profonde des propriétés actuelles de l'axe
+            update[axisName] = JSON.parse(JSON.stringify(currentLayout[axisName] || {}));
+
+            // Appliquer la nouvelle propriété
+            switch(property) {
+                case 'type':
+                    update[axisName].type = value;
+                    break;
+                case 'showgrid':
+                    update[axisName].showgrid = value;
+                    update[axisName].gridwidth = value ? 1 : 0;  // Ajuster la largeur de la grille
+                    break;
+                case 'gridcolor':
+                    update[axisName].gridcolor = value;
+                    break;
+                case 'gridstyle':
+                    update[axisName].gridstyle = value;
+                    break;
+                case 'dtick':
+                    update[axisName].dtick = parseFloat(value) || null;
+                    break;
+                case 'ticksize':
+                    update[axisName].tickfont = {
+                        ...update[axisName].tickfont,
+                        size: parseInt(value)
+                    };
+                    break;
+                case 'ticks':
+                    update[axisName].ticks = value;
+                    break;
+                case 'ticklen':
+                    update[axisName].ticklen = parseInt(value);
+                    break;
+                case 'tickwidth':
+                    update[axisName].tickwidth = parseInt(value);
+                    break;
+
+            }
+
+            // S'assurer que les propriétés importantes sont préservées
+            if (!update[axisName].title && currentLayout[axisName].title) {
+                update[axisName].title = currentLayout[axisName].title;
+            }
+            if (!update[axisName].type && currentLayout[axisName].type) {
+                update[axisName].type = currentLayout[axisName].type;
+            }
+
+            console.log('Updating axis:', update);
+            Plotly.relayout(plotDiv, update);
+        }
+
+        // Fonction pour synchroniser tous les titres
+        function syncAxisTitles(plotIndex, axis, value) {
+            // Mettre à jour le graphique
+            const plotDiv = document.getElementById(`plotly-div-${plotIndex}`);
+            const update = {};
+            const axisName = `${axis}axis`;
+            update[axisName] = {
+                ...plotDiv.layout[axisName],
+                title: {
+                    ...plotDiv.layout[axisName].title,
+                    text: value
+                }
+            };
+            Plotly.relayout(plotDiv, update);
+
+            // Mettre à jour l'input dans l'onglet des axes
+            const axisTitleInput = document.getElementById(`${axis}AxisTitle`);
+            if (axisTitleInput && axisTitleInput.value !== value) {
+                axisTitleInput.value = value;
+            }
+
+            // Mettre à jour les en-têtes de colonnes
+            const columnIndex = axis === 'x' ? currentXColumn : currentYColumn;
+            if (columnHeaders[columnIndex] !== value) {
+                columnHeaders[columnIndex] = value;
+                const headerInputs = document.querySelectorAll('.header-input');
+                if (headerInputs[columnIndex]) {
+                    headerInputs[columnIndex].value = value;
+                }
+                updateColumnSelectors();
+            }
+        }
+
+        // Fonction pour obtenir le template actuel du graphique
+        function getCurrentTemplate(plotIndex) {
+            const plotDiv = document.getElementById(`plotly-div-${plotIndex}`);
+            const layout = plotDiv.layout;
+
+            return {
+                figure: {
+                    width: layout.width,
+                    height: layout.height,
+                    bgcolor: layout.plot_bgcolor,
+                    margin: layout.margin
+                },
+                font: layout.font,
+                xaxis: {
+                    title: layout.xaxis.title,
+                    tickfont: layout.xaxis.tickfont,
+                    showgrid: layout.xaxis.showgrid,
+                    gridcolor: layout.xaxis.gridcolor,
+                    gridwidth: layout.xaxis.gridwidth,
+                    linewidth: layout.xaxis.linewidth,
+                    linecolor: layout.xaxis.linecolor,
+                    ticks: layout.xaxis.ticks,
+                    ticklen: layout.xaxis.ticklen,
+                    tickwidth: layout.xaxis.tickwidth,
+                    mirror: layout.xaxis.mirror,
+                    showline: layout.xaxis.showline,
+                    type: layout.xaxis.type
+                },
+                yaxis: {
+                    title: layout.yaxis.title,
+                    tickfont: layout.yaxis.tickfont,
+                    showgrid: layout.yaxis.showgrid,
+                    gridcolor: layout.yaxis.gridcolor,
+                    gridwidth: layout.yaxis.gridwidth,
+                    linewidth: layout.yaxis.linewidth,
+                    linecolor: layout.yaxis.linecolor,
+                    ticks: layout.yaxis.ticks,
+                    ticklen: layout.yaxis.ticklen,
+                    tickwidth: layout.yaxis.tickwidth,
+                    mirror: layout.yaxis.mirror,
+                    showline: layout.yaxis.showline,
+                    type: layout.yaxis.type
+                },
+                legend: {
+                    font: layout.legend.font,
+                    borderwidth: layout.legend.borderwidth,
+                    yanchor: layout.legend.yanchor,
+                    y: layout.legend.y,
+                    xanchor: layout.legend.xanchor,
+                    x: layout.legend.x
+                }
+            };
+        }
+
+        // Fonction pour actualiser le JSON dans la zone de texte
+        function refreshTemplateJson(plotIndex) {
+            const template = getCurrentTemplate(plotIndex);
+            try {
+                // Formater le JSON avec une indentation de 2 espaces
+                const formattedJson = JSON.stringify(template, null, 2);
+                document.getElementById('templateJson').value = formattedJson;
+            } catch (error) {
+                console.error('Erreur lors de la génération du template:', error);
+                // En cas d'erreur, générer un template par défaut
+                const defaultTemplate = {
+                    figure: {
+                        width: 800,
+                        height: 600,
+                        bgcolor: "#FFFFFF",
+                        margin: { l: 80, r: 40, t: 40, b: 60, pad: 10 }
+                    },
+                    font: {
+                        family: "Arial, sans-serif",
+                        size: 12,
+                        color: "#2F3337"
+                    },
+                    xaxis: {
+                        title: { text: "", font: { family: "Arial", size: 14, color: "#2F3337" } },
+                        tickfont: { family: "Arial", size: 12 },
+                        showgrid: true,
+                        gridcolor: "#E1E5EA",
+                        gridwidth: 1,
+                        linewidth: 1,
+                        linecolor: "#2F3337",
+                        ticks: "outside",
+                        ticklen: 5,
+                        tickwidth: 1,
+                        mirror: true,
+                        showline: true
+                    },
+                    yaxis: {
+                        title: { text: "", font: { family: "Arial", size: 14, color: "#2F3337" } },
+                        tickfont: { family: "Arial", size: 12 },
+                        showgrid: true,
+                        gridcolor: "#E1E5EA",
+                        gridwidth: 1,
+                        linewidth: 1,
+                        linecolor: "#2F3337",
+                        ticks: "outside",
+                        ticklen: 5,
+                        tickwidth: 1,
+                        mirror: true,
+                        showline: true
+                    },
+                    legend: {
+                        font: { size: 12, family: "Arial" },
+                        borderwidth: 0,
+                        yanchor: "top",
+                        y: 0.99,
+                        xanchor: "right",
+                        x: 0.99
+                    }
+                };
+                document.getElementById('templateJson').value = JSON.stringify(defaultTemplate, null, 2);
+            }
+        }
+
+        // Fonction pour sauvegarder le template
+        function saveTemplateJson() {
+            const jsonStr = document.getElementById('templateJson').value;
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'graph_template.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Fonction pour charger un template
+        function loadTemplateJson() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('templateJson').value = e.target.result;
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        function validateTemplate(template) {
+            // Structure minimale requise pour un template valide
+            const requiredStructure = {
+                figure: ['width', 'height', 'bgcolor', 'margin'],
+                font: ['family', 'size', 'color'],
+                xaxis: ['title', 'tickfont', 'showgrid', 'gridcolor', 'gridwidth', 'linewidth', 'linecolor', 'ticks', 'ticklen', 'tickwidth', 'mirror', 'showline'],
+                yaxis: ['title', 'tickfont', 'showgrid', 'gridcolor', 'gridwidth', 'linewidth', 'linecolor', 'ticks', 'ticklen', 'tickwidth', 'mirror', 'showline'],
+                legend: ['font', 'borderwidth', 'yanchor', 'y', 'xanchor', 'x']
+            };
+
+            // Vérifier la présence de toutes les sections principales
+            for (const section in requiredStructure) {
+                if (!template[section]) {
+                    throw new Error(`Section manquante: ${section}`);
+                }
+
+                // Vérifier les propriétés requises dans chaque section
+                for (const prop of requiredStructure[section]) {
+                    if (template[section][prop] === undefined) {
+                        throw new Error(`Propriété manquante: ${section}.${prop}`);
+                    }
+                }
+            }
+
+            // Vérifications supplémentaires spécifiques
+            if (typeof template.figure.width !== 'number' || template.figure.width <= 0) {
+                throw new Error('La largeur doit être un nombre positif');
+            }
+            if (typeof template.figure.height !== 'number' || template.figure.height <= 0) {
+                throw new Error('La hauteur doit être un nombre positif');
+            }
+
+            return true;
+        }
+
+        // Fonction pour appliquer le template depuis le JSON
+        function applyTemplateJson(plotIndex) {
+            const templateTextarea = document.getElementById('templateJson');
+            try {
+                // Parser le JSON
+                const template = JSON.parse(templateTextarea.value);
+
+                // Valider le template
+                validateTemplate(template);
+
+                const plotDiv = document.getElementById(`plotly-div-${plotIndex}`);
+
+                // Appliquer le template
+                const update = {
+                    width: template.figure.width,
+                    height: template.figure.height,
+                    plot_bgcolor: template.figure.bgcolor,
+                    paper_bgcolor: template.figure.bgcolor,
+                    margin: template.figure.margin,
+                    font: template.font,
+                    xaxis: template.xaxis,
+                    yaxis: template.yaxis,
+                    legend: template.legend
+                };
+
+                Plotly.relayout(plotDiv, update).then(() => {
+                    // Mettre à jour tous les contrôles
+                    initializeControls(plotIndex);
+                });
+
+            } catch (error) {
+                // Afficher l'erreur
+                alert(`Erreur dans le template : ${error.message}\nRestauration du template actuel.`);
+
+                // Restaurer le template actuel
+                refreshTemplateJson(plotIndex);
+            }
+        }
+
+        // Fonction pour initialiser le sélecteur de couleur
+        function initializeColorPicker() {
+            const colorPicker = document.getElementById('colorPicker');
+            const hexInput = document.getElementById('hexColor');
+
+            // Initialiser avec une couleur par défaut
+            colorPicker.value = '#000000';
+            hexInput.value = '#000000';
+
+            // Ajouter l'écouteur d'événements
+            colorPicker.addEventListener('input', function(e) {
+                hexInput.value = e.target.value.toUpperCase();
+            });
+
+            colorPicker.addEventListener('change', function(e) {
+                hexInput.value = e.target.value.toUpperCase();
+            });
+        }
+
+        // Fonction pour copier la couleur hex
+        function copyHexColor() {
+            const hexInput = document.getElementById('hexColor');
+
+            // Copier dans le presse-papier
+            navigator.clipboard.writeText(hexInput.value)
+                .then(() => {
+                    // Feedback visuel temporaire
+                    const originalValue = hexInput.value;
+                    hexInput.value = 'Copié !';
+                    setTimeout(() => {
+                        hexInput.value = originalValue;
+                    }, 1000);
+                })
+                .catch(err => {
+                    console.error('Erreur lors de la copie :', err);
+                    alert('Erreur lors de la copie de la couleur');
+                });
+        }
+
+        // Fonction pour initialiser le sélecteur de police
+        function initializeFontSelector() {
+            const fontSelector = document.getElementById('fontSelector');
+            const fontString = document.getElementById('fontString');
+            const fontPreview = document.getElementById('fontPreview');
+
+            // Initialiser avec la première police
+            fontString.value = fontSelector.value;
+            fontPreview.style.fontFamily = fontSelector.value;
+
+            // Ajouter l'écouteur d'événements
+            fontSelector.addEventListener('change', function(e) {
+                const selectedFont = e.target.value;
+                fontString.value = selectedFont;
+                fontPreview.style.fontFamily = selectedFont;
+            });
+        }
+
+        // Fonction pour copier la chaîne de police
+        function copyFontString() {
+            const fontString = document.getElementById('fontString');
+
+            navigator.clipboard.writeText(fontString.value)
+                .then(() => {
+                    // Feedback visuel temporaire
+                    const originalValue = fontString.value;
+                    fontString.value = 'Copié !';
+                    setTimeout(() => {
+                        fontString.value = originalValue;
+                    }, 1000);
+                })
+                .catch(err => {
+                    console.error('Erreur lors de la copie :', err);
+                    alert('Erreur lors de la copie de la police');
+                });
+        }
+
+        // GESTION DES OBJETS GRAPH
+        function addText(plotIndex) {
+            const text = {
+                type: 'text',
+                content: 'Nouveau texte',
+                x: 0.5,
+                y: 0.5,
+                xref: 'paper',
+                yref: 'paper',
+                showarrow: false,
+                font: {
+                    family: 'Arial',
+                    size: 16,
+                    color: 'black'
+                },
+                opacity: 1,
+                draggable: true,
+                textangle: 0
+            };
+
+            plotObjects.push(text);
+            updatePlotAnnotations(plotIndex);
+            refreshObjectsList(plotIndex);
+        }
+
+        function addImage(plotIndex) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const image = {
+                        type: 'image',
+                        source: event.target.result,
+                        x: 0.5,
+                        y: 0.5,
+                        xref: 'paper',
+                        yref: 'paper',
+                        sizex: 0.2,
+                        sizey: 0.2,
+                        sizing: 'contain',
+                        opacity: 1,
+                        layer: 'above',
+                        xanchor: 'center',
+                        yanchor: 'middle'
+                    };
+
+                    plotObjects.push(image);
+                    updatePlotAnnotations(plotIndex);
+                    refreshObjectsList(plotIndex);
+                };
+                reader.readAsDataURL(file);
+            };
+            input.click();
+        }
+
+        function deleteSelectedObject(plotIndex) {
+            if (selectedObjectIndex >= 0) {
+                plotObjects.splice(selectedObjectIndex, 1);
+                selectedObjectIndex = -1;
+                updatePlotAnnotations(plotIndex);
+                refreshObjectsList(plotIndex);
+            }
+        }
+
+        function updatePlotAnnotations(plotIndex) {
+            const plotDiv = document.getElementById(`plotly-div-${plotIndex}`);
+
+            const annotations = plotObjects
+                .filter(obj => obj.type === 'text')
+                .map(obj => ({
+                    ...obj,
+                    text: obj.text || obj.content,
+                    showarrow: false,
+                    draggable: true
+                }));
+
+            const images = plotObjects
+                .filter(obj => obj.type === 'image')
+                .map(obj => ({
+                    ...obj,
+                    sizing: 'contain',
+                    xref: 'paper',
+                    yref: 'paper',
+                    xanchor: 'center',
+                    yanchor: 'middle',
+                    layer: 'above'
+                }));
+
+            const update = {
+                annotations: annotations,
+                images: images,
+                dragmode: false  // S'assure que le mode drag reste désactivé
+            };
+
+            Plotly.relayout(plotDiv, update);
+        }
+
+        function refreshObjectsList(plotIndex) {
+            const tbody = document.getElementById('objectsList');
+            tbody.innerHTML = '';
+
+            plotObjects.forEach((obj, index) => {
+                const tr = document.createElement('tr');
+                tr.classList.toggle('table-active', index === selectedObjectIndex);
+
+                const isText = obj.type === 'text';
+
+                tr.innerHTML = `
+                    <td>${obj.type}</td>
+                    <td>
+                        ${isText ?
+                            `<input type="text" class="form-control form-control-sm"
+                                    value="${obj.text || obj.content}"
+                                    onchange="updateObjectText(${plotIndex}, ${index}, this.value)">`
+                            : 'Image'}
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm"
+                               value="${obj.x}" step="0.1"
+                               onchange="updateObjectPosition(${plotIndex}, ${index}, 'x', this.value)">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm"
+                               value="${obj.y}" step="0.1"
+                               onchange="updateObjectPosition(${plotIndex}, ${index}, 'y', this.value)">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm"
+                               value="${isText ? obj.font.size : obj.sizex}" step="1"
+                               onchange="updateObjectSize(${plotIndex}, ${index}, this.value)">
+                    </td>
+                    <td>
+                        <input type="range" class="form-range"
+                               min="0" max="1" step="0.1"
+                               value="${obj.opacity}"
+                               onchange="updateObjectOpacity(${plotIndex}, ${index}, this.value)">
+                    </td>
+                    <td>
+                        ${isText ? `
+                            <div class="btn-group">
+                                <input type="color" class="form-control form-control-color"
+                                       value="${obj.font.color}"
+                                       onchange="updateObjectColor(${plotIndex}, ${index}, this.value)">
+                                <select class="form-select form-select-sm"
+                                        onchange="updateObjectFont(${plotIndex}, ${index}, this.value)">
+                                    <option value="Arial" ${obj.font.family === 'Arial' ? 'selected' : ''}>Arial</option>
+                                    <option value="Times New Roman" ${obj.font.family === 'Times New Roman' ? 'selected' : ''}>Times New Roman</option>
+                                    <option value="Helvetica" ${obj.font.family === 'Helvetica' ? 'selected' : ''}>Helvetica</option>
+                                </select>
+                            </div>
+                        ` : ''}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary"
+                                onclick="selectObject(${plotIndex}, ${index})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Ajouter les nouvelles fonctions de mise à jour
+        function updateObjectText(plotIndex, index, value) {
+            plotObjects[index].text = value;
+            plotObjects[index].content = value;
+            updatePlotAnnotations(plotIndex);
+        }
+
+        function updateObjectOpacity(plotIndex, index, value) {
+            plotObjects[index].opacity = parseFloat(value);
+            updatePlotAnnotations(plotIndex);
+        }
+
+        function updateObjectColor(plotIndex, index, value) {
+            plotObjects[index].font.color = value;
+            updatePlotAnnotations(plotIndex);
+        }
+
+        function updateObjectFont(plotIndex, index, value) {
+            plotObjects[index].font.family = value;
+            updatePlotAnnotations(plotIndex);
+        }
+
+        function updateObjectPosition(plotIndex, index, axis, value) {
+            const obj = plotObjects[index];
+            obj[axis] = parseFloat(value);
+
+            // Si c'est une image, mettre à jour aussi la position relative
+            if (obj.type === 'image') {
+                const plotDiv = document.getElementById(`plotly-div-${plotIndex}`);
+                const bb = plotDiv.getBoundingClientRect();
+                if (axis === 'x') {
+                    obj.xanchor = 'center';
+                } else {
+                    obj.yanchor = 'middle';
+                }
+            }
+
+            updatePlotAnnotations(plotIndex);
+        }
+
+        function updateObjectSize(plotIndex, index, value) {
+            const obj = plotObjects[index];
+            if (obj.type === 'text') {
+                obj.font.size = parseInt(value);
+            } else {
+                obj.sizex = parseFloat(value);
+                obj.sizey = parseFloat(value);
+            }
+            updatePlotAnnotations(plotIndex);
+        }
+
+        function selectObject(plotIndex, index) {
+            selectedObjectIndex = index;
+            refreshObjectsList(plotIndex);
+        }
+
+        // Ajouter la gestion du drag & drop
+        function initializeDragAndDrop(plotIndex) {
+            const plotDiv = document.getElementById(`plotly-div-${plotIndex}`);
+
+            // Pour les textes (annotations)
+            plotDiv.on('plotly_relayout', function(eventData) {
+                if (eventData['annotations[0].x'] !== undefined) {
+                    plotObjects.forEach((obj, index) => {
+                        if (obj.type === 'text') {
+                            const newX = eventData[`annotations[${index}].x`];
+                            const newY = eventData[`annotations[${index}].y`];
+                            if (newX !== undefined) obj.x = newX;
+                            if (newY !== undefined) obj.y = newY;
+                        }
+                    });
+                    refreshObjectsList(plotIndex);
+                }
+            });
+
+            // Configuration initiale
+            Plotly.relayout(plotDiv, {
+                dragmode: false,
+                hovermode: 'closest'
+            });
+
+            let isDragging = false;
+            let selectedImage = null;
+            let offsetX = 0;
+            let offsetY = 0;
+
+            function getPlotCoordinates(e) {
+                const rect = plotDiv.getBoundingClientRect();
+                return {
+                    x: (e.clientX - rect.left) / rect.width,
+                    y: 1 - (e.clientY - rect.top) / rect.height
+                };
+            }
+
+            function isOverImage(coords, image) {
+                const halfWidth = image.sizex / 2;
+                const halfHeight = image.sizey / 2;
+                const imageLeft = image.x - halfWidth;
+                const imageRight = image.x + halfWidth;
+                const imageTop = image.y + halfHeight;
+                const imageBottom = image.y - halfHeight;
+
+                return coords.x >= imageLeft &&
+                       coords.x <= imageRight &&
+                       coords.y <= imageTop &&
+                       coords.y >= imageBottom;
+            }
+
+            plotDiv.addEventListener('mousedown', function(e) {
+                const coords = getPlotCoordinates(e);
+
+                plotObjects.forEach((obj, index) => {
+                    if (obj.type === 'image' && isOverImage(coords, obj)) {
+                        isDragging = true;
+                        selectedImage = index;
+                        offsetX = coords.x - obj.x;
+                        offsetY = coords.y - obj.y;
+                        e.preventDefault();
+                    }
+                });
+            });
+
+            plotDiv.addEventListener('mousemove', function(e) {
+                if (isDragging && selectedImage !== null) {
+                    const coords = getPlotCoordinates(e);
+
+                    // Appliquer l'offset pour un déplacement plus naturel
+                    plotObjects[selectedImage].x = coords.x - offsetX;
+                    plotObjects[selectedImage].y = coords.y - offsetY;
+
+                    // Mettre à jour immédiatement le graphique
+                    updatePlotAnnotations(plotIndex);
+                    refreshObjectsList(plotIndex);
+
+                    e.preventDefault();
+                }
+            });
+
+            function stopDragging() {
+                if (isDragging) {
+                    isDragging = false;
+                    selectedImage = null;
+                    updatePlotAnnotations(plotIndex);
+                }
+            }
+
+            plotDiv.addEventListener('mouseup', stopDragging);
+            plotDiv.addEventListener('mouseleave', stopDragging);
+        }
+
+        // LISTENERS GRAPH
+        function addAxisTitleListeners(plotIndex) {
+            const plotDiv = document.getElementById(`plotly-div-${plotIndex}`);
+
+            // Écouter les événements de mise à jour du graphique
+            plotDiv.on('plotly_relayout', function(eventData) {
+                // Vérifier si les titres des axes ont changé
+                if (eventData['xaxis.title.text']) {
+                    syncAxisTitles(plotIndex, 'x', eventData['xaxis.title.text']);
+                }
+                if (eventData['yaxis.title.text']) {
+                    syncAxisTitles(plotIndex, 'y', eventData['yaxis.title.text']);
+                }
+            });
+        }
+
+        // Ajouter un écouteur pour les changements de titre dans le graphique
+        function addTitleListeners(plotIndex) {
+            const plotDiv = document.getElementById(`plotly-div-${plotIndex}`);
+
+            plotDiv.on('plotly_relayout', function(eventData) {
+                // Vérifier si le titre a changé
+                if (eventData['title.text'] !== undefined) {
+                    syncGraphTitle(plotIndex, eventData['title.text']);
+                }
+            });
+        }
+
+        // FIN DES GRAPHIQUE TOUT JOLIE
+
+        document.getElementById('fitForm').onsubmit = function(e) {
+            // Récupérer le textarea
+            const expressionTextarea = document.getElementById('id_expression');
+            const expressionCleanInput = document.getElementById('id_expression_clean');
+
+            // Nettoyer l'expression en supprimant les retours à la ligne et les espaces multiples
+            const cleanExpression = expressionTextarea.value
+                .replace(/\s*\n\s*/g, ' ')  // Remplace les retours à la ligne par un espace
+                .replace(/\s+/g, ' ')       // Remplace les espaces multiples par un seul espace
+                .trim();                    // Supprime les espaces au début et à la fin
+
+            // Mettre à jour le champ caché avec la version nettoyée
+            expressionCleanInput.value = cleanExpression;
+
+            // Forcer la mise à jour des données cachées
+            updateHiddenInput();
+
+            // Mettre à jour le champ fit_range avant la soumission
+            updateFitRange();
+
+            const dataInput = document.getElementById('id_data');
+            console.log('Données soumises:', dataInput.value);
+            console.log('Expression soumise:', cleanExpression);
+
+            // Vérifier si nous avons des données valides
+            try {
+                const data = JSON.parse(dataInput.value);
+                const hasValidData = data.pages &&
+                                    data.pages.length > 0 &&
+                                    data.pages[0].length > 0;
+
+                if (!hasValidData) {
+                    if (!confirm('Aucune donnée détectée. Voulez-vous utiliser les données de test ?')) {
+                        e.preventDefault();
+                        return false;
+                    }
+                }
+            } catch (e) {
+                console.error('Erreur lors de la validation des données:', e);
+                if (!confirm('Erreur dans les données. Voulez-vous utiliser les données de test ?')) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+
+            // Ajouter la validation de l'intervalle de fit
+            if (fitRange.enabled) {
+                if (fitRange.min === null || fitRange.max === null) {
+                    alert('Veuillez spécifier un intervalle de fit valide');
+                    e.preventDefault();
+                    return false;
+                }
+                if (fitRange.min >= fitRange.max) {
+                    alert('L\'intervalle de fit n\'est pas valide (min ≥ max)');
+                    e.preventDefault();
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        // Initialisation avec les données du serveur si disponibles
+        document.addEventListener('DOMContentLoaded', () => {
+            {% if form.data.data %}
+                try {
+                    const savedData = JSON.parse('{{ form.data.data|escapejs }}');
+                    if (savedData.headers) {
+                        columnHeaders = savedData.headers;
+                        pages = savedData.pages;
+                        // Forcer la conversion en nombre
+                        currentXColumn = Number(savedData.x_column);
+                        currentYColumn = Number(savedData.y_column);
+
+                        console.log('Colonnes restaurées:', {
+                            x: currentXColumn,
+                            y: currentYColumn
+                        });
+                    } else {
+                        pages = savedData;
+                        columnHeaders = ['X', 'Y'];
+                        currentXColumn = 0;
+                        currentYColumn = 1;
+                    }
+                    currentPage = parseInt('{{ form.data.active_page|default:0 }}');
+                } catch (e) {
+                    console.error('Erreur lors de la restauration des données:', e);
+                    pages = [[]];
+                    columnHeaders = ['X', 'Y'];
+                    currentPage = 0;
+                    currentXColumn = 0;
+                    currentYColumn = 1;
+                }
+            {% else %}
+                pages = [[]];
+                columnHeaders = ['X', 'Y'];
+                currentPage = 0;
+                currentXColumn = 0;
+                currentYColumn = 1;
+            {% endif %}
+
+            renderCurrentPage();
+
+            const xSelect = document.getElementById('xColumnSelect');
+            const ySelect = document.getElementById('yColumnSelect');
+
+            if (xSelect && ySelect) {
+                // Définir d'abord les valeurs
+                xSelect.value = currentXColumn;
+                ySelect.value = currentYColumn;
+
+                console.log('Valeurs initiales des sélecteurs:', {
+                    x: xSelect.value,
+                    y: ySelect.value
+                });
+
+                xSelect.addEventListener('change', function(e) {
+                    currentXColumn = parseInt(e.target.value);
+                    updateHiddenInput();
+                    updateColumnSelectors();
+                });
+
+                ySelect.addEventListener('change', function(e) {
+                    currentYColumn = parseInt(e.target.value);
+                    updateHiddenInput();
+                    updateColumnSelectors();
+                });
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isSelecting) {
+                // Trouver la cellule sous le curseur
+                const cells = document.querySelectorAll('#dataTable td');
+                cells.forEach(cell => {
+                    const rect = cell.getBoundingClientRect();
+                    if (e.clientX >= rect.left && e.clientX <= rect.right &&
+                        e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                        const [row, col] = cell.dataset.pos.split('-').map(Number);
+                        selectionEnd = { row, col };
+                        updateSelection();
+                    }
+                });
+                autoScroll(e);
+            }
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (isSelecting) {
+                isSelecting = false;
+                if (scrollInterval) {
+                    clearInterval(scrollInterval);
+                    scrollInterval = null;
+                }
+                // Permettre l'édition de la dernière cellule sélectionnée
+                const lastCell = document.querySelector(`[data-pos="${selectionEnd.row}-${selectionEnd.col}"]`);
+                if (lastCell) {
+                    const input = lastCell.querySelector('input');
+                    if (input) {
+                        input.focus();
+                    }
+                }
+            }
+        });
+
+
+        // Ajouter un écouteur d'événement pour l'input du titre
+        document.addEventListener('DOMContentLoaded', () => {
+            const titleInput = document.getElementById('titleText');
+            if (titleInput) {
+                titleInput.addEventListener('input', (e) => {
+                    document.querySelectorAll('[id^="plotly-div-"]').forEach(plot => {
+                        const plotIndex = plot.id.split('-')[2];
+                        syncGraphTitle(plotIndex, e.target.value);
+                    });
+                });
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialiser la modal de prévisualisation
+            previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+
+            // Initialiser les écouteurs pour les boutons de données
+            document.getElementById('addRowBtn')?.addEventListener('click', addRow);
+            document.getElementById('importFileBtn')?.addEventListener('click', () => {
+                document.getElementById('fileInput').click();
+            });
+            document.getElementById('fileInput')?.addEventListener('change', function(e) {
+                handleFileUpload(this);
+            });
+            document.getElementById('pasteDataBtn')?.addEventListener('click', pasteData);
+            document.getElementById('checkIntegrityBtn')?.addEventListener('click', checkDataIntegrity);
+            document.getElementById('copySelectionBtn')?.addEventListener('click', copySelection);
+            document.getElementById('pasteSelectionBtn')?.addEventListener('click', pasteIntoSelection);
+            document.getElementById('deleteSelectionBtn')?.addEventListener('click', deleteSelection);
+
+            // Ajouter les écouteurs pour l'intervalle de fit
+            document.getElementById('fitRangeMin').addEventListener('change', updateFitRange);
+            document.getElementById('fitRangeMax').addEventListener('change', updateFitRange);
+            document.getElementById('useFitRange').addEventListener('change', updateFitRange);
+
+            // Suggérer l'intervalle initial
+            suggestFitRange();
+
+            // Restaurer les données si disponibles
+            {% if data_state %}
+                const dataState = {{ data_state|safe }};
+
+                // Restaurer les en-têtes
+                if (dataState.headers) {
+                    columnHeaders = dataState.headers;
+                }
+
+                // Restaurer les pages de données
+                if (dataState.pages) {
+                    pages = dataState.pages;
+                }
+
+                // Restaurer la page active
+                if (dataState.active_page !== undefined) {
+                    currentPage = dataState.active_page;
+                }
+
+                // Mettre à jour l'affichage
+                renderCurrentPage();
+            {% endif %}
+            // Sauvegarder lors des modifications du tableau
+            const dataTable = document.getElementById('dataTable');
+            if (dataTable) {
+                dataTable.addEventListener('change', function() {
+                    updateHiddenInput();
+                    saveCompleteState();
+                });
+            }
+
+            // Sauvegarder lors des modifications du graphique
+            const plotDiv = document.getElementById('plotly-div');
+            if (plotDiv) {
+                plotDiv.on('plotly_restyle', saveCompleteState);
+                plotDiv.on('plotly_relayout', saveCompleteState);
+            }
+
+            // Restaurer l'intervalle de fit s'il existe
+            const savedFitRange = {{ fit_range|default:'{}'|safe }};
+            if (savedFitRange.enabled) {
+                document.getElementById('fitRangeMin').value = savedFitRange.min;
+                document.getElementById('fitRangeMax').value = savedFitRange.max;
+                document.getElementById('useFitRange').checked = true;
+                updateFitRange();
+            }
+
+            const xSelect = document.getElementById('xColumnSelect');
+            const ySelect = document.getElementById('yColumnSelect');
+
+            xSelect.addEventListener('change', function(e) {
+                console.log('Changement colonne X:', e.target.value);
+                currentXColumn = parseInt(e.target.value);
+                updateHiddenInput();
+            });
+
+            ySelect.addEventListener('change', function(e) {
+                console.log('Changement colonne Y:', e.target.value);
+                currentYColumn = parseInt(e.target.value);
+                updateHiddenInput();
+            });
+        });
+
+        // Gestion des raccourcis clavier
+        document.addEventListener('keydown', (e) => {
+            // Vérifier si nous sommes dans l'input de l'expression ou le textarea du template
+            const expressionInput = document.getElementById('id_expression');
+            const templateTextarea = document.getElementById('templateJson');
+            const isInExpressionInput = document.activeElement === expressionInput;
+            const isInTemplateTextarea = document.activeElement === templateTextarea;
+
+            // Si nous sommes dans le textarea du template, permettre tous les raccourcis clavier
+            if (isInTemplateTextarea) {
+                return true;
+            }
+
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'c' && !isInExpressionInput) {
+                    copySelection();
+                    e.preventDefault();
+                } else if (e.key === 'v' && !isInExpressionInput) {
+                    pasteIntoSelection();
+                    e.preventDefault();
+                }
+            } else if ((e.key === 'Delete' || e.key === 'Backspace') && !isInExpressionInput) {
+                if (selectedCells.size > 0) {
+                    deleteSelection();
+                    e.preventDefault();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
