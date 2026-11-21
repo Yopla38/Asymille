@@ -35,8 +35,8 @@ class Preset:
 
 def _family(prefix: str, publisher: str, widths: list[tuple[str, str, float]], max_height: float, font: str, label: float, tick: float, stroke: float, line: float,
             note: str = "") -> list[Preset]:
-    return [Preset(f"{prefix}-{key}", publisher, label, width, round(width / 1.4 if width < 130 else width / 2.0, 1), max_height, font, label, tick, stroke, line, note)
-            for key, label, width in widths]
+    return [Preset(f"{prefix}-{key}", publisher, column, width, round(width / 1.4 if width < 130 else width / 2.0, 1), max_height, font, label, tick, stroke, line, note)
+            for key, column, width in widths]
 
 
 PRESETS: list[Preset] = [

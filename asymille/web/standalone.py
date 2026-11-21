@@ -28,6 +28,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import DateTime, Integer, String, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+from sqlalchemy.pool import StaticPool
 from sqlalchemy.types import TypeDecorator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -76,7 +77,8 @@ def create_app(database: str | Path = ROOT / "data" / "asymille.db", port: int =
 
     if str(database) != ":memory:":
         Path(database).parent.mkdir(parents=True, exist_ok=True)
-    engine = create_engine(f"sqlite:///{database}", connect_args={"check_same_thread": False})
+    memory = str(database) == ":memory:"            # a database in memory lives in one connection: every request shares it
+    engine = create_engine("sqlite://" if memory else f"sqlite:///{database}", connect_args={"check_same_thread": False}, **({"poolclass": StaticPool} if memory else {}))
 
     @event.listens_for(engine, "connect")
     def _pragmas(connection: Any, _record: Any) -> None:

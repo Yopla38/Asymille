@@ -437,7 +437,10 @@ def _intervals(minimizer: Any, result: Any, opt: Options) -> dict[str, list[floa
 def _describe(result: Any, model: Model, data: Data, suffix: str, opt: Options, intervals: dict[str, list[float | None]] | None) -> dict[str, Any]:
     """What is said of one dataset: its parameters, the curve to draw, its residuals."""
     params = result.params
-    strip = (lambda name: name[: -len(suffix)]) if suffix else (lambda name: name)
+
+    def strip(name: str) -> str:
+        return name[: -len(suffix)] if suffix else name
+
     rows = []
     for c in model.components:
         for n in c.names:

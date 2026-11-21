@@ -456,7 +456,7 @@ def histogram(c: Curve, bins: int, density: bool) -> dict[str, Any]:
     edges = np.histogram_bin_edges(c.y, bins=bins or "fd")
     if len(edges) > 10001:
         edges = np.histogram_bin_edges(c.y, bins=10000)
-    counts, edges = np.histogram(c.y, bins=edges, density=density)
+    counts, edges = np.histogram(c.y, bins=edges, density=density)  # type: ignore[call-overload]
     return {"sheet": "new", "title": "Histogram",
             "columns": [_column("Bin centre", (edges[:-1] + edges[1:]) / 2, "x"), _column("Density" if density else "Count", counts.astype(float)), _column("Bin start", edges[:-1]), _column("Bin end", edges[1:])],
             "facts": [_fact("Bins", len(counts)), _fact("Bin width", float(edges[1] - edges[0]))],

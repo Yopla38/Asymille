@@ -63,7 +63,7 @@ def build(host: Host) -> APIRouter:
     Db = Depends(host.db)
     Owner = Depends(host.user_id)
 
-    def computed(work: Callable[[], Any]) -> Any:
+    def computed(work: Callable[[], dict[str, Any]]) -> dict[str, Any]:
         """Run a calculation when a place is free, and turn its refusal into the host's error."""
         if not places.acquire(timeout=host.limits.busy_wait):
             raise host.error(503, "busy", "the server is computing for others: try again in a moment")
@@ -180,10 +180,14 @@ def build(host: Host) -> APIRouter:
 
     @router.post("/figure")
     def figure(body: FigureIn, owner: int = Owner) -> dict[str, Any]:
-        made = computed(lambda: figures.render(body.figure, body.format, body.dpi))
         stem = re.sub(r"[^A-Za-z0-9._-]+", "_", body.name).strip("._") or "figure"
-        return {"name": f"{stem}.{figures.FORMATS[body.format]['extension']}", "mime": figures.FORMATS[body.format]["mime"], "data": base64.b64encode(made.data).decode(),
-                "width_mm": made.width, "height_mm": made.height, "font": made.font, "notes": made.notes}
+
+        def draw() -> dict[str, Any]:
+            made = figures.render(body.figure, body.format, body.dpi)
+            return {"name": f"{stem}.{figures.FORMATS[body.format]['extension']}", "mime": figures.FORMATS[body.format]["mime"], "data": base64.b64encode(made.data).decode(),
+                    "width_mm": made.width, "height_mm": made.height, "font": made.font, "notes": made.notes}
+
+        return computed(draw)
 
     return router
 

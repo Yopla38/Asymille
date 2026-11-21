@@ -174,7 +174,7 @@ def render(figure: Any, fmt: str = "pdf", dpi: int = 600) -> Made:
     settings = {"font.family": [family], "pdf.fonttype": 42, "ps.fonttype": 42, "svg.fonttype": "none", "text.usetex": False, "mathtext.fontset": "custom",
                 "mathtext.rm": family, "mathtext.it": f"{family}:italic", "mathtext.bf": f"{family}:bold", "mathtext.cal": family, "mathtext.sf": family, "mathtext.tt": family,
                 "mathtext.default": "rm", "mathtext.fallback": "cm",
-                "path.simplify": False, "savefig.transparent": False, "axes.unicode_minus": True}
+                "path.simplify": False, "lines.scale_dashes": False, "savefig.transparent": False, "axes.unicode_minus": True}
     with _lock, rc_context(settings):
         fig = Figure(figsize=(width / 25.4, height / 25.4), facecolor=background)
         FigureCanvasAgg(fig)

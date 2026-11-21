@@ -100,7 +100,7 @@ class Expression:
         if isinstance(node, ast.Constant):
             if type(node.value) not in (int, float):
                 raise ExpressionError("only numbers are allowed, not " + type(node.value).__name__)
-            number = float(node.value)
+            number = float(node.value)  # type: ignore[arg-type]
             return lambda env: number
         if isinstance(node, ast.Name):
             name = node.id
@@ -146,7 +146,7 @@ class Expression:
 
     def _tex(self, node: ast.AST, rename: Callable[[str], str], outer: int) -> str:
         if isinstance(node, ast.Constant):
-            return _number_tex(float(node.value))
+            return _number_tex(float(node.value))  # type: ignore[arg-type]
         if isinstance(node, ast.Name):
             return r"\pi" if node.id == "pi" else (r"\mathrm{e}" if node.id == "e" else rename(node.id))
         if isinstance(node, ast.UnaryOp):
