@@ -48,6 +48,17 @@ Run `pytest` and `mypy` after a change in `asymille/`; `check_page.js` after a c
 
 A fit result is kept in the project, so a project opened again shows what was found without computing. `stale` says the data or the model changed since.
 
+### A series is a fit repeated on many sheets
+
+`doc.series` holds series of files (`page/js/model.js`, "series: the same fit on many files"); a graph's own `panel.series` are its curves, an older use of the word kept in the document. The page says "Series" for the first and "Curves" for the second.
+
+A series names a fit and member sheets, each with the value of what was varied. `runSeries(sr, call, tell, stop)` is in `model.js`, without DOM, with the server injected as `call(path, body)`: `tools/check_page.js` runs it with a stand-in. Things it relies on:
+
+- a column made by an operation keeps how (`column.made = {op, args, x, y, y2, part}`, set by `app.analyse`); `counterpart(from, cid, to)` finds what a column of the model sheet is in another sheet: the same place among imported columns, the same formula, the same operation on its own counterparts. `replay` gives each member the computed columns, with the same short names so that formulas read them;
+- the order is from the model sheet outwards, and a file starts from its neighbour only when that neighbour's fit is `sound` (converged, no warning); otherwise from the last sound one on that side. A fit that is not sound is tried once more from `model/guess` on its own data. Do not weaken this: one file without a peak used to send every file after it astray;
+- a member keeps `brief(result)` only (parameters, derived, statistics, warnings): thirty full results would not fit in a project. The curve of the file shown lives in `memberCurves` for the visit and is computed again by `model/evaluate`;
+- the table of results is a sheet rebuilt in place: its columns are found again by `made = {series, key}`, so their ids, and the graphs made of them, survive a new run. A row to check keeps its numbers and is marked in the `check` column; a curve with `unless` set to that column leaves those rows out.
+
 ### Nothing the page sends is executed
 
 An expression (a custom fit function, a tie between parameters) is parsed by `ast.parse` and then walked by `asymille/expressions.py`: numbers, names, `+ - * / ^`, calls of a fixed list of functions. No `eval`, no `sympy.parse_expr`, no attribute access; every number is a float. A tie is checked by that walker before lmfit's own evaluator sees it. A model names functions of the registry; an operation is called by its name. Do not add an endpoint that runs what it receives. The page has its own parser for column formulas (`page/js/expr.js`, no `eval` or `Function` either), and `tests/data/expressions.json` holds the cases both must agree on.
@@ -68,7 +79,7 @@ An expression (a custom fit function, a tie between parameters) is parsed by `as
 
 ## Conventions
 
-- The README states counts and measured facts (35 functions, 18 operations, 28 presets, 124 tests, 34 check lines, the NIST tolerances). When a change moves one, update the sentence, and say what was measured and what was not in the same plain register.
+- The README states counts and measured facts (35 functions, 18 operations, 28 presets, 128 tests, 52 check lines, the NIST tolerances). When a change moves one, update the sentence, and say what was measured and what was not in the same plain register.
 - The journal presets in `asymille/journals.py` are written by hand from the guides for authors; `CHECKED` says they were not re-read from the publishers. Do not present them as verified unless they were.
 - A result is never invented: a fit that fails says why, an operation that cannot be done says why, and a warning is attached to a number that should not be trusted.
 - Commit subjects are one plain sentence saying what changed.

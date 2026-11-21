@@ -22,8 +22,8 @@ uv run python serve.py            # http://localhost:8780: one person, no accoun
 Check it:
 
 ```bash
-uv run pytest                     # 124 tests: the engine, the API, the figures
-node tools/check_page.js          # 34 lines: the parts of the page that hold logic, run in Node
+uv run pytest                     # 128 tests: the engine, the API, the figures
+node tools/check_page.js          # 52 lines: the parts of the page that hold logic, run in Node
 uv run mypy && uv run ruff check asymille tests tools serve.py
 ```
 
@@ -38,6 +38,8 @@ uv run mypy && uv run ruff check asymille tests tools serve.py
 **Journals.** 28 presets set the width, the font, the type sizes and the line widths to what a journal asks (Nature, Science, ACS, APS, AIP, Elsevier, RSC, Springer, PNAS, IEEE; a slide; a thesis page). The style of a graph can be copied to another.
 
 **Fits.** A model is a sum of components taken from a registry of 35 functions (peaks: Gaussian, Lorentzian, Voigt, pseudo-Voigt, Pearson VII, Moffat, split Lorentzian, skewed and exponentially modified Gaussian, log-normal, Fano, Doniach–Šunjić; baselines and polynomials; decays, growth, stretched exponential, power law; sigmoids, Hill, dose–response; sines; Arrhenius, Langmuir, Michaelis–Menten, Fermi–Dirac) or written as an expression (`a*exp(-x/tau) + c`). Each parameter has a starting value, can be held, bounded, or tied to others (`p2_center = p1_center + 3.2`). Starting values are read from the data (the baseline, then the most prominent peaks). Weights: none, 1/σ² from an error column, counting statistics, constant relative error. A range of x can be dragged on the graph. Several columns can be fitted one after the other, or together with shared parameters. Methods: Levenberg–Marquardt, trust region (with a robust loss against outliers), Nelder–Mead, Powell, differential evolution.
+
+**Series.** The same fit on many files: thirty spectra at thirty temperatures, and what is wanted is the position of a peak against temperature. The fit is made once, on one file. A series repeats it on the others: each file is given the same computed columns (the formulas, and the operations done again: a baseline removed, a smoothing), then fitted with the same model. The value of what was varied is read from the names of the files (`…_3kV_236nm_160K` → 160 K), shown, and can be corrected. The files are fitted from the one the fit was made on outwards, each starting from what its neighbour gave, so that a peak is followed as it moves; a neighbour whose fit carries a warning is not started from, and a file that ends with a warning is tried again from starting values read from its own data. What comes out is a sheet, one row per file: each parameter and derived quantity beside its uncertainty, ready to plot with its error bars and to fit in its turn, and a column that says which files to check. A file that cannot be fitted says why and the others go on. One graph shows each file with its fit, to look at them one by one; another draws all the files, coloured along what was varied and shifted to stack them. A curve of the results leaves out the files to check unless asked to draw them.
 
 **What a fit is worth.** Every parameter with its standard error, and on request the interval found by profiling χ²; quantities derived from the parameters (width at half maximum, height, half-life…) with their uncertainty propagated through the covariance matrix; χ², reduced χ², R², AIC, BIC, and with true error bars the probability of the χ² found; correlations; the confidence band of the curve; a panel of residuals. And warnings in words when a number should not be trusted: a fit that did not converge, a parameter on its bound, two parameters the data cannot tell apart, error bars that are too small.
 
@@ -111,6 +113,7 @@ Measured, in this repository:
 - **Operations.** Each on a curve whose answer is known: derivative and integral of sin, a Gaussian's area above its baseline, peaks of known width, a sine's amplitude by Fourier transform, regression against `scipy.stats.linregress`.
 - **Figures.** A PDF has the size asked (to 0.01 pt), holds its font as TrueType, and is the same file when made twice. A figure laid out by the page is drawn by the server in three formats. The two were compared by eye on two figures: axes, ticks, labels and legend sit at the same places.
 - **The two parsers.** The page's formula parser gives the same value as the server's on 28 expressions, and both refuse the same 20 texts that are not arithmetic.
+- **A series.** In Node, with a stand-in for the server: the columns found again in each file, the operation and the formula repeated, the order of the fits, the start from a neighbour, the second try, the table. In a browser, with the server: eight made-up files of a peak that moves with temperature, one of them with no peak at all. The seven with a peak gave its position within their uncertainty of the true one (8.240 for 8.24 at 20 K, 11.597 for 11.60 at 300 K); the one without was marked "to check" and the two files after it started from the last sound neighbour. Before that rule they started from the lost fit and ended at −224.
 - **The page, in a browser.** Driven with Playwright through the standalone server and through Ondelette's: import of the `.Specan` example, typing and pasting, a formula, plotting, fitting the example (centres found at 7.995 ± 0.006 and 14.494 ± 0.009 for 8 and 14.5), regression, zoom, undo, export to PDF, the list of projects, signing up. No error in the console.
 
 Not measured, or not done:
@@ -120,6 +123,8 @@ Not measured, or not done:
 - **Page and server draw the same list, with their own text engines.** Positions are the same; the exact shape of a glyph, and the width of a text that is not anchored at its start, depend on the font each one has.
 - **Speed.** No timing was measured beyond the tests. A fit is stopped after 30 s; it runs in the request, four at a time for all users.
 - **Size.** A project travels whole at each save, data included. The host's limit on a request (4 MB in Ondelette) bounds it: about 200 000 numbers. The page says so when a save is refused.
+- **A series keeps every file in the project**, so its size grows with them: eight files of 201 points made a project of 172 kB; thirty spectra of 4 000 points would be about 3 MB, near Ondelette's 4 MB. The dialog and the list of projects say how much room is left when the host says its limit. Only the parameters of each file are kept, not its fitted curve, which is computed again when the file is shown.
+- **A series reads what was varied from the names of the files**, not from their headings. An operation that makes a table of its own (interpolation, Fourier transform) is not repeated by a series; those that write columns beside the data are.
 - **No test drives the page's panels automatically**: `check_page.js` covers the logic without DOM; the browser sessions above were run by hand with a script, not kept as a suite.
 - Not there: images placed in a figure (the previous application had them), a font per text, 3D and contour plots, date axes, Excel and binary instrument formats, a peak-by-peak "click to add" on the graph, reports as PDF, scripting by the user.
 

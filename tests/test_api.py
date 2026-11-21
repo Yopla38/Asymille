@@ -54,6 +54,7 @@ def test_the_catalogue_is_what_the_page_draws_its_lists_from(page: Page) -> None
     assert gaussian["family"] == "Peaks" and [p["name"] for p in gaussian["params"]] == ["amplitude", "center", "sigma"] and gaussian["tex"].startswith("y = ")
     nature = next(p for p in cat["journals"]["presets"] if p["id"] == "nature-1")
     assert (nature["width"], nature["label"], nature["label_size"], nature["tick_size"], nature["font"]) == (89, "single column", 7, 6, "Arial")
+    assert cat["limits"]["document_bytes"] is None                              # the standalone server has no limit; a host says its own
     assert {"leastsq", "differential_evolution"} <= set(cat["methods"]) and cat["fonts"][0]["name"] == "Arial" and "pdf" in cat["formats"]
 
 
@@ -62,8 +63,12 @@ def test_a_project_written_by_the_page_is_kept_as_it_is(page: Page) -> None:
     assert made.status_code == 201, made.text
     project = made.json()
     assert project["document"] == PROJECT                                      # nothing added, nothing lost: an empty cell stays null
-    assert (project["name"], project["sheet_count"], project["graph_count"], project["fit_count"], project["revision"]) == ("Check", 2, 1, 1, 1)
+    assert (project["name"], project["sheet_count"], project["graph_count"], project["fit_count"], project["revision"]) == ("Check", 4, 2, 1, 1)
     assert [p["id"] for p in page.get("/projects").json()] == [project["id"]]
+    series = project["document"]["series"][0]                                  # the same fit on two files, with what the second gave, and the sheet of results
+    assert series["variable"] == {"name": "Temperature", "unit": "K"} and [m["value"] for m in series["members"]] == [160, 180] and series["members"][1]["result"]["params"][0]["name"] == "p1_center"
+    made = [c["made"] for s in project["document"]["sheets"] if s["id"] == series["results"] for c in s["columns"]]
+    assert made[0] == {"series": series["id"], "key": "variable"} and {"series": series["id"], "key": "p1_center:err"} in made
     changed = dict(PROJECT, name="Renamed")
     saved = page.send("PUT", f"/projects/{project['id']}", {"document": changed, "revision": 1})
     assert saved.status_code == 200 and saved.json()["revision"] == 2 and saved.json()["name"] == "Renamed"
@@ -80,12 +85,24 @@ def test_a_project_written_by_the_page_is_kept_as_it_is(page: Page) -> None:
     (lambda d: d.update(colour="red"), "colour"), (lambda d: d.update(version=2), "version"), (lambda d: d["sheets"][0].update(script="x"), "script"),
     (lambda d: d["sheets"][0]["columns"][0].update(id="Not An Id"), "id"), (lambda d: d["sheets"].append(dict(d["sheets"][0])), "same id"),
     (lambda d: d["sheets"][0]["columns"][0].update(values=[{"a": 1}]), "values"), (lambda d: d["fits"][0].update(mode="magic"), "mode"),
+    (lambda d: d["series"][0]["members"][0].update(state="exploded"), "state"), (lambda d: d["series"][0].update(run="rm -rf"), "run"),
+    (lambda d: d["series"].append(dict(d["series"][0])), "same id"),
 ])
 def test_what_is_not_a_project_is_refused_with_the_name_of_what_is_wrong(page: Page, change: Any, said: str) -> None:
     document = json.loads(json.dumps(PROJECT))
     change(document)
     answer = page.post("/projects", {"document": document})
     assert answer.status_code == 422 and said in answer.json()["error"]["message"] + json.dumps(answer.json()["error"].get("fields", {}))
+
+
+def test_a_project_saved_before_there_were_series_is_still_a_project(page: Page) -> None:
+    old = json.loads(json.dumps(PROJECT))
+    del old["series"]
+    for sheet in old["sheets"]:
+        for column in sheet["columns"]:
+            del column["made"]
+    made = page.post("/projects", {"document": old})
+    assert made.status_code == 201 and made.json()["document"]["series"] == [] and made.json()["document"]["sheets"][0]["columns"][0]["made"] is None
 
 
 def test_an_account_holds_so_many_projects(page: Page) -> None:

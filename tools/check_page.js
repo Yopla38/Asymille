@@ -7,6 +7,8 @@
  *   1  formulas (expr.js) give the values asymille/expressions.py gives for the same text (tests/data/expressions.json)
  *   2  the importer reads the example files, a European CSV, a file with a heading
  *   3  the project (model.js): formulas, sorting, undo; serialize and restore are exact inverses
+ *   5  a series (model.js): the variable read from the names of the files, the same columns found in each file, the
+ *      fit repeated from neighbour to neighbour with a stand-in for the server, and the table of what was found
  *   4  a figure (plot.js): ticks, markup, a layout whose every number is finite and inside the page, and what a
  *      person can change of an axis and of a title (ticks, numbers, colour, grid, size, place)
  *
@@ -74,6 +76,13 @@ graph.figure.panels[0].y2 = P.axis({ label: 'Second (\\mu{}V)', color: '#d55e00'
 Object.assign(graph.figure.panels[0], { title: 'Sample A', titleSize: 11, titleAlign: 'left', titleColor: '#0072b2', titleBold: true });
 Object.assign(graph.figure.panels[0].x, { grid: true, gridColor: '#bbbbbb', gridDash: 'dot', minor: false });
 graph.figure.panels[0].notes.push({ id: M.id('n'), type: 'text', x: 2, y: 30, text: 'T = 4 K', size: 8, coords: 'data' }, { id: M.id('n'), type: 'span', x: 1.5, x2: 2.5, color: '#e69f00', opacity: 0.2 });
+// a series of two files, as it is kept: the project the API is tested with holds one
+const second = M.sheetFrom('Peaks 180K', [{ title: 'Energy', unit: 'eV', values: [1, 2, 3, 4] }, { title: 'Counts', values: [12, 22, 33, 41] }, { title: 'err', values: [1, 1, 1, 2], role: 'yerr' }]);
+const kept = M.addSeries(fit);
+kept.variable = { name: 'Temperature', unit: 'K' }; kept.members[0].value = 160;
+kept.members.push({ sheet: second.id, value: 180, state: 'done', message: '', result: { success: true, message: '', redchi: 1.2, rsquared: 0.98, npoints: 4, nvarys: 4, warnings: ['p1_sigma ended on its bound'],
+  params: [{ name: 'p1_center', value: 2.1, stderr: 0.05, vary: true, tied: '' }], derived: [{ name: 'p1_fwhm', label: 'full width at half maximum', value: 1.4, stderr: 0.1 }] } });
+M.seriesTable(kept); M.reviewGraph(kept);
 M.log('Checked.'); M.doc.log.forEach((l) => { l.at = '2026-01-01T00:00:00.000Z'; });        // the same project at every run
 M.commit();
 const data = M.seriesData;
@@ -125,11 +134,86 @@ ok('an axis in a colour: its side of the frame, its ticks, its numbers and its t
 const titled = styled((f, p) => { p.title = 'Sample A'; p.titleSize = 14; p.titleAlign = 'left'; p.titleColor = '#0072b2'; p.titleBold = true; });
 const title = titled.items.find((it) => it.k === 'title:p1');
 ok('a title with its size, its colour, its place, in bold', title.size === 14 && title.anchor === 'start' && Math.abs(title.x - titled.hit.panels[0].box.x) < 0.02 && title.color === '#0072b2' && title.weight === 'bold' && titled.hit.panels[0].box.y > plainBox.y + 14);
+const barred = (err) => P.layout(Object.assign(P.defaults(), { panels: [Object.assign(P.panel('p1'), { series: [P.series({ id: 'r1' })] })] }), () => ({ x: [1, 2, 3], y: [8, 9, 10], yerr: err })).hit.panels[0].yr;
+ok('error bars have their room on the axis, but one that dwarfs the data does not flatten the rest', barred([0.5, 0.5, 0.5])[1] > 10.5 && barred([0.5, 40000, 0.5])[1] < 11 && barred([0.5, 40000, 0.5])[1] > 10.5);
+const beside = styled((f, p) => { p.legend.pos = 'out'; p.series[0].label = 'A long name for this curve'; });
+ok('a legend set outside the panel has its room on the page', beside.hit.panels[0].legend.x >= beside.hit.panels[0].box.x + beside.hit.panels[0].box.w && beside.hit.panels[0].legend.x + beside.hit.panels[0].legend.w <= 120 * P.MM + 0.5 && beside.hit.panels[0].box.w < plainBox.w - 60);
 const empty = P.layout(Object.assign(P.defaults(), { panels: [Object.assign(P.panel('p1'), { y: P.axis({ scale: 'log' }), series: [P.series({ id: 'r1' })] })] }), () => ({ x: [1, 2], y: [-1, -2] }));
 ok('a logarithmic axis with no positive value is said, not drawn empty in silence', empty.hit.warnings.length === 1 && /none of its values is positive/.test(empty.hit.warnings[0]));
 const long = Array.from({ length: 50000 }, (_, i) => i), dense = P.layout(Object.assign(P.defaults(), { panels: [Object.assign(P.panel('p1'), { series: [P.series({ id: 'r1', type: 'line' })] })] }), () => ({ x: long, y: long.map((v) => Math.sin(v / 50)) }));
 const drawn = dense.items.find((it) => it.t === 'line' && it.k === 'series:r1').paths[0].length / 2;
 ok('a curve of 50 000 points is drawn with ' + drawn + ': what a page can show', drawn < 8000 && drawn > 1000);
 
-console.log(failed ? '\n' + failed + ' FAILED' : '\nall ok');
-process.exit(failed ? 1 : 0);
+// 5 ── a series: the same fit on many files
+(async () => {
+  const names = M.variablesIn(['N3978_3kV_spot3_236nm_160K', 'N3978_3kV_spot3_236nm_180K', 'N3978_3kV_spot3_236nm_200K']);
+  ok('what was varied is read from the names of the files: the number that differs, with its unit', names[0].values.join() === '160,180,200' && names[0].unit === 'K' && names[0].distinct === 3 && names[names.length - 1].distinct === 1
+    && JSON.stringify(M.numbersIn('diaph2mm_int200s x-3 T=-5C')) === '[{"value":2,"unit":"mm"},{"value":200,"unit":"s"},{"value":3,"unit":""},{"value":-5,"unit":"C"}]');
+  ok('names of different shapes: a number is known by its unit', M.variablesIn(['a 4K', 'b at 12 K, run 3', 'c 20.5K'])[0].values.join() === '4,12,20.5');
+
+  M.blank('Series');
+  const peak = (c) => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((x) => Math.round(100 * Math.exp(-((x - c) ** 2) / 2)) / 10);
+  const file = (name, c) => M.sheetFrom(name, [{ title: 'Energy', unit: 'eV', values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] }, { title: 'Counts', unit: 'a.u.', values: peak(c) }]);
+  const s20 = file('run 20K', 4), s10 = file('run 10K', 3), s30 = file('run 30K', 5), s40 = file('run 40K', 6), s5 = file('run 5K', 2);
+  const narrow = M.sheetFrom('one column', [{ title: 'only', values: [1, 2, 3] }]);
+  // on the model sheet: a column made by an operation, a formula on it, and the fit of that formula column
+  const base = M.addColumn(s20, { title: 'Baseline removed of Counts', values: peak(4).map((v) => v - 1), made: { op: 'baseline_line', args: { points: 2 }, x: s20.columns[0].id, y: s20.columns[1].id, y2: null, part: 1 } });
+  const twiceOf = M.addColumn(s20, { formula: base.name + '*2' }); M.changed(s20);
+  const fit2 = M.addFit(s20, s20.columns[0], twiceOf);
+  fit2.model.components = [{ id: 'p1', fn: 'gaussian', params: { amplitude: { value: 1, vary: true, min: null, max: null, expr: '' }, center: { value: 4, vary: true, min: null, max: null, expr: '' }, sigma: { value: 1, vary: false, min: 0, max: null, expr: '' } } }];
+  fit2.options.started = true;
+  const sr = M.addSeries(fit2);
+  ok('a sheet that lacks the columns the fit reads cannot be in the series, and is told why', /1 column of data where “run 20K” has 2/.test(M.fitsIn(sr, narrow)) && M.fitsIn(sr, s30) === '');
+  [[s10, 10], [s30, 30], [s40, 40], [s5, 5]].forEach(([s, v]) => sr.members.push({ sheet: s.id, value: v, state: 'todo', message: '', result: null }));
+  sr.members[0].value = 20;
+  ok('the files are fitted from the model sheet outwards, each after its neighbour', M.seriesOrder(sr).map((o) => o.member.value + '<' + (o.from ? o.from.value : '')).join(' ') === '20< 30<20 40<30 10<20 5<10' && M.commonName(['PL_sampleA_100K', 'PL_sampleA_20K']) === 'PL_sampleA' && M.commonName(['a1', 'b2']) === '');
+  // a stand-in for the server: an operation subtracts 1, a fit finds the centre where y is largest, refuses the file at 40 K and warns about the one at 10 K
+  const asked = [];
+  const call = async (path, body) => {
+    asked.push({ path, body: JSON.parse(JSON.stringify(body)) });
+    if (path === 'asymille/analyse') return { sheet: 'same', note: 'Line removed.', columns: [{ name: 'Baseline', values: body.y.map(() => 1) }, { name: 'Baseline removed', values: body.y.map((v) => v - 1) }], facts: [] };
+    if (path === 'asymille/model/guess') return { model: body.model };
+    const top = body.x[body.y.indexOf(Math.max(...body.y))];
+    if (top === 6) throw new Error('the server refused this one');
+    return { success: true, message: '', redchi: 1, rsquared: 0.99, npoints: body.x.length, nvarys: 2, warnings: top === 3 ? ['p1_center ended on its bound'] : [],
+      params: [{ name: 'p1_amplitude', value: 9, stderr: 0.1, vary: true }, { name: 'p1_center', value: top, stderr: 0.02, vary: true }, { name: 'p1_sigma', value: 1, stderr: null, vary: false }],
+      derived: [{ name: 'p1_fwhm', label: 'width', value: 2.35, stderr: null }], curve: { x: [0, 9], y: [0, 0], components: { p1: [0, 0] } } };
+  };
+  const told = [];
+  const table = await M.runSeries(sr, call, (m) => told.push(m.value + ':' + m.state));
+  const centreSent = (a) => a.body.model.components[0].params.center.value, fitsOf = (s) => asked.filter((a) => a.path === 'asymille/fit' && a.body.y.join() === s.columns[3].values.join());
+  ok('each file is given the columns the model sheet computes: the operation done again, then the formula', [s10, s30, s40, s5].every((s) => s.columns.length === 4 && s.columns[2].made && s.columns[2].made.op === 'baseline_line' && s.columns[2].made.y === s.columns[1].id && s.columns[3].formula === twiceOf.formula)
+    && s30.columns[3].values.every((v, i) => close(v, (peak(5)[i] - 1) * 2)) && asked.filter((a) => a.path === 'asymille/analyse').length === 4, JSON.stringify(s30.columns.map((c) => c.name + ':' + (c.made ? c.made.op : c.formula))));
+  ok('a file starts from what its neighbour gave, and the held parameter stays held', centreSent(fitsOf(s20)[0]) === 4 && centreSent(fitsOf(s30)[0]) === 4 && centreSent(fitsOf(s40)[0]) === 5 && centreSent(fitsOf(s10)[0]) === 4
+    && fitsOf(s40)[0].body.model.components[0].params.sigma.vary === false && fitsOf(s30).length === 1, [s20, s30, s40, s10].map((s) => centreSent(fitsOf(s)[0])).join());
+  ok('a fit that carries a warning is tried again from its own data, and the next file does not start from it', fitsOf(s10).length === 2 && asked.filter((a) => a.path === 'asymille/model/guess').length === 1 && fitsOf(s5).length === 1 && centreSent(fitsOf(s5)[0]) === 4,
+    fitsOf(s10).length + ' ' + centreSent(fitsOf(s5)[0]));
+  const mOf = (v) => sr.members.find((m) => m.value === v);
+  ok('a file that cannot be fitted says why, and the others are fitted all the same', mOf(40).state === 'failed' && /refused this one/.test(mOf(40).message) && mOf(40).result === null && [5, 10, 20, 30].every((v) => mOf(v).state === 'done') && told.join(' ').includes('40:running') && told[told.length - 1] === '5:done');
+  const colOf = (key) => table.columns.find((c) => c.made && c.made.key === key);
+  ok('what was found is a sheet: a row per file in the order of what was varied, each parameter beside its uncertainty', colOf('variable').values.join() === '5,10,20,30,40' && colOf('variable').role === 'x' && colOf('p1_center').values.join() === '2,3,4,5,' && colOf('p1_center').unit === 'eV'
+    && colOf('p1_center:err').role === 'yerr' && table.columns.indexOf(colOf('p1_center:err')) === table.columns.indexOf(colOf('p1_center')) + 1 && !colOf('p1_sigma') && colOf('p1_fwhm').values[2] === 2.35 && M.errOf(table, colOf('p1_center')) === colOf('p1_center:err'));
+  ok('the rows that should not be trusted are marked: the one that failed, the one with a warning', /refused this one/.test(colOf('check').values[4]) && colOf('check').values[1] === '1 warning' && colOf('check').values[0] === null && colOf('file').values[1] === 'run 10K');
+  const ids = table.columns.map((c) => c.id).join(), graphOf = M.plot(table, [colOf('p1_center')], 'both'), trend = graphOf.figure.panels[0].series[0];
+  trend.unless = colOf('check').id;
+  const left = M.seriesData(trend);
+  ok('a curve of the results can leave out the files marked to check, which stay in the sheet', left.x.join() === '5,20,30' && left.y.join() === '2,4,5' && left.left === 2 && colOf('p1_center').title === 'p1 center' && graphOf.figure.panels[0].y.label === 'p1 center (eV)');
+  trend.unless = null;
+  sr.chain = false; asked.length = 0;
+  await M.runSeries(sr, call);
+  ok('run again, the table is the same sheet and the same columns: a graph made of it follows', M.sheet(sr.results) === table && table.columns.map((c) => c.id).join() === ids && M.seriesData(graphOf.figure.panels[0].series[0]).yerr[2] === 0.02
+    && asked.filter((a) => a.path === 'asymille/fit').every((a) => centreSent(a) === 4) && [s10, s30].every((s) => s.columns.length === 4));
+  const review = M.reviewGraph(sr); sr.current = s30.id;
+  const shownData = M.seriesData(review.figure.panels[0].series[0]), shownFit = M.seriesData(review.figure.panels[0].series[1]);
+  ok('a graph shows one file of the series at a time, with the curve fitted to it', shownData.y.join() === s30.columns[3].values.join() && shownData.label === 'run 30K' && P.literal('PL_sampleA^2') === 'PL\\_sampleA\\^2' && P.plain(P.literal('PL_sampleA_20K')) === 'PL_sampleA_20K' && shownFit && shownFit.x.join() === '0,9' && M.reviewGraph(sr) === review);
+  const all = M.overlayGraph(sr, 5).figure.panels[0].series;
+  ok('every file on one graph, coloured along what was varied, each shifted from the one before', all.length === 5 && all.map((r) => r.label).join() === '5,10,20,30,40' && all[0].color === '#440154' && all[4].color === '#e8d51c' && M.seriesData(all[3]).y[0] === s30.columns[3].values[0] + 15, all.map((r) => r.label + r.color).join());
+  const mark0 = M.mark(fit2); fit2.model.components[0].params.center.value = 4.5;
+  const sameMark = M.mark(fit2) === mark0; fit2.limits = [1, 8];
+  ok('a series knows the model it was run with: a starting value does not change it, a range does', sameMark && M.mark(fit2) !== mark0 && sr.ran === mark0);
+  const text = JSON.stringify(M.serialize()); M.restore(JSON.parse(text));
+  const old = JSON.parse(text); delete old.series; old.sheets.forEach((s) => s.columns.forEach((c) => { delete c.made; }));
+  ok('a project with a series written and read back is the same; one saved before there were series opens', JSON.stringify(M.serialize()) === text && M.restore(old) && M.doc.series.length === 0 && M.doc.sheets[0].columns[0].made === null);
+  console.log(failed ? '\n' + failed + ' FAILED' : '\nall ok');
+  process.exit(failed ? 1 : 0);
+})();
