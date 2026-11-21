@@ -23,7 +23,7 @@ Check it:
 
 ```bash
 uv run pytest                     # 124 tests: the engine, the API, the figures
-node tools/check_page.js          # 29 lines: the parts of the page that hold logic, run in Node
+node tools/check_page.js          # 34 lines: the parts of the page that hold logic, run in Node
 uv run mypy && uv run ruff check asymille tests tools serve.py
 ```
 
@@ -33,7 +33,7 @@ uv run mypy && uv run ruff check asymille tests tools serve.py
 
 **Import.** Text files with columns (`.txt`, `.dat`, `.csv`…) and Tektronix RSA `.Specan` spectra, read in the browser: nothing is uploaded. The separator, the decimal mark (3.14 or 3,14), the lines of heading and the names of the columns are detected, shown with the first rows, and can be corrected before anything is kept. `Energy (eV)` in a heading becomes a title and a unit. A file dropped anywhere on the page opens the dialog.
 
-**Graphs.** A figure has a size in millimetres and type in points, and is shown as it will be printed. Symbols, lines, steps, bars, filled areas, error bars in x and y, a second y axis, logarithmic axes, several panels with a shared x axis, panel letters, a legend that can be dragged, texts, arrows, lines and highlighted ranges. Axis titles and labels take `E_{F}`, `cm^{-1}`, `\alpha`. Drag a rectangle to zoom, the wheel zooms about the pointer, double-click shows everything again. A long curve is thinned to what a page can show (50 000 points are drawn with about 5 700).
+**Graphs.** A figure has a size in millimetres and type in points, and is shown as it will be printed. Symbols, lines, steps, bars, filled areas, error bars in x and y, a second y axis, logarithmic axes, several panels with a shared x axis, panel letters, a legend that can be dragged, texts, arrows, lines and highlighted ranges. Axis titles and labels take `E_{F}`, `cm^{-1}`, `\alpha`. The type sizes, the line widths, the direction and length of the ticks and the frame are set for the figure; an axis can have its own ticks (inwards, outwards, both, none; length; width), its own size of numbers, its colour (line, ticks, numbers and title together), small ticks or not, and a grid with its colour and its line. A panel title has its size, its colour, its place and can be bold. A figure has one font. Drag a rectangle to zoom, the wheel zooms about the pointer, double-click shows everything again. A long curve is thinned to what a page can show (50 000 points are drawn with about 5 700).
 
 **Journals.** 28 presets set the width, the font, the type sizes and the line widths to what a journal asks (Nature, Science, ACS, APS, AIP, Elsevier, RSC, Springer, PNAS, IEEE; a slide; a thesis page). The style of a graph can be copied to another.
 
@@ -121,7 +121,7 @@ Not measured, or not done:
 - **Speed.** No timing was measured beyond the tests. A fit is stopped after 30 s; it runs in the request, four at a time for all users.
 - **Size.** A project travels whole at each save, data included. The host's limit on a request (4 MB in Ondelette) bounds it: about 200 000 numbers. The page says so when a save is refused.
 - **No test drives the page's panels automatically**: `check_page.js` covers the logic without DOM; the browser sessions above were run by hand with a script, not kept as a suite.
-- Not there: 3D and contour plots, date axes, Excel and binary instrument formats, a peak-by-peak "click to add" on the graph, reports as PDF, scripting by the user.
+- Not there: images placed in a figure (the previous application had them), a font per text, 3D and contour plots, date axes, Excel and binary instrument formats, a peak-by-peak "click to add" on the graph, reports as PDF, scripting by the user.
 
 ## Coming from the Django application
 

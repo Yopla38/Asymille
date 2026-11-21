@@ -7,7 +7,8 @@
  *   1  formulas (expr.js) give the values asymille/expressions.py gives for the same text (tests/data/expressions.json)
  *   2  the importer reads the example files, a European CSV, a file with a heading
  *   3  the project (model.js): formulas, sorting, undo; serialize and restore are exact inverses
- *   4  a figure (plot.js): ticks, markup, and a layout whose every number is finite and inside the page
+ *   4  a figure (plot.js): ticks, markup, a layout whose every number is finite and inside the page, and what a
+ *      person can change of an axis and of a title (ticks, numbers, colour, grid, size, place)
  *
  * The project it builds is the one the API is tested with: a field added to model.js that
  * asymille/web/schemas.py does not know fails there. */
@@ -69,7 +70,9 @@ fit.limits = [0.5, null];
 const cx = [1, 2, 3, 4];
 fit.result = { success: true, redchi: 1, rsquared: 0.9, npoints: 3, params: [], derived: [], warnings: [], correlations: [], curve: { x: cx, y: [10, 20, 30, 40], components: { p1: [1, 2, 3, 4], b1: [9, 18, 27, 36] }, band: { level: 0.95, lower: [9, 19, 29, 39], upper: [11, 21, 31, 41] }, prediction: null }, residuals: { x: [1, 3, 4], y: [0.1, -0.1, 0] } };
 M.showFit(fit, graph, { band: true, components: true }); M.showResiduals(fit, graph);
-graph.figure.panels[0].y2 = P.axis({ label: 'Second (\\mu{}V)' });
+graph.figure.panels[0].y2 = P.axis({ label: 'Second (\\mu{}V)', color: '#d55e00', tickDir: 'out', tickSize: 7 });
+Object.assign(graph.figure.panels[0], { title: 'Sample A', titleSize: 11, titleAlign: 'left', titleColor: '#0072b2', titleBold: true });
+Object.assign(graph.figure.panels[0].x, { grid: true, gridColor: '#bbbbbb', gridDash: 'dot', minor: false });
 graph.figure.panels[0].notes.push({ id: M.id('n'), type: 'text', x: 2, y: 30, text: 'T = 4 K', size: 8, coords: 'data' }, { id: M.id('n'), type: 'span', x: 1.5, x2: 2.5, color: '#e69f00', opacity: 0.2 });
 M.log('Checked.'); M.doc.log.forEach((l) => { l.at = '2026-01-01T00:00:00.000Z'; });        // the same project at every run
 M.commit();
@@ -106,6 +109,22 @@ ok('a figure laid out: ' + list.items.length + ' things to draw, every number fi
 const svg = P.svg(list);
 ok('the figure as SVG: its size in millimetres, clips, text kept as text', svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg" width="120mm"') && svg.includes('<clipPath') && svg.includes('>Energy (eV)</tspan>') && !svg.includes('NaN') && !svg.includes('data-k'));
 ok('what is sent to the server holds no key of the page', P.sendable(list).items.every((it) => !('k' in it)) && !('hit' in P.sendable(list)));
+// what a person can change of an axis and of a title, each seen in what is drawn
+const styled = (change) => { const f = P.defaults(); f.panels[0].series.push(P.series({ id: 'r1', type: 'line' })); f.panels[0].y2 = P.axis(); change(f, f.panels[0]); return P.layout(f, () => ({ x: [0, 1, 2, 3], y: [0, 10, 20, 30] })); };
+const plainBox = styled(() => {}).hit.panels[0].box;
+const outward = styled((f, p) => { p.y.tickDir = 'out'; p.y.tickLen = 6; p.y.tickWidth = 1.5; p.y.tickSize = 12; p.x.minor = false; });
+const yTicks = outward.items.find((it) => it.t === 'line' && it.width === 1.5), xTicks = outward.items.find((it) => it.t === 'line' && it !== yTicks && it.paths.every((q) => q[0] === q[2]) && it.paths.length < 40 && !it.k);
+ok('an axis with its own ticks: outwards, longer, thicker, larger numbers; the other axis as the page says', yTicks && yTicks.paths.some((q) => Math.abs(q[2] - q[0] + 6) < 0.02 || Math.abs(q[0] - q[2] + 6) < 0.02) && yTicks.paths.every((q) => Math.min(q[0], q[2]) >= outward.hit.panels[0].box.x - 6.01)
+  && outward.items.some((it) => it.t === 'text' && it.size === 12 && it.k === 'yaxis:p1') && outward.items.some((it) => it.t === 'text' && it.size === 8 && it.k === 'xaxis:p1') && outward.hit.panels[0].box.x > plainBox.x + 5);
+ok('small ticks can be left out of one axis', xTicks && xTicks.paths.length === 2 * P.ticks(-0.12, 3.12, {}, plainBox.w, 8, true).major.length);
+const gridded = styled((f, p) => { p.x.grid = true; p.x.gridColor = '#ff0000'; p.x.gridDash = 'dash'; p.y.grid = true; f.stroke.grid = 0.8; });
+ok('the grid of each axis has its colour and its line', gridded.items.some((it) => it.t === 'line' && it.stroke === '#ff0000' && it.width === 0.8 && JSON.stringify(it.dash) === '[3.2,1.6]') && gridded.items.some((it) => it.t === 'line' && it.stroke === '#d0d0d0' && !it.dash));
+const coloured = styled((f, p) => { p.y2.color = '#d55e00'; p.y2.label = 'Right'; });
+ok('an axis in a colour: its side of the frame, its ticks, its numbers and its title', coloured.items.filter((it) => it.k === 'frame:p1').length === 4 && coloured.items.filter((it) => it.k === 'frame:p1' && it.stroke === '#d55e00').length === 1
+  && coloured.items.filter((it) => it.t === 'text' && it.color === '#d55e00').length > 3 && styled(() => {}).items.filter((it) => it.k === 'frame:p1').length === 1);
+const titled = styled((f, p) => { p.title = 'Sample A'; p.titleSize = 14; p.titleAlign = 'left'; p.titleColor = '#0072b2'; p.titleBold = true; });
+const title = titled.items.find((it) => it.k === 'title:p1');
+ok('a title with its size, its colour, its place, in bold', title.size === 14 && title.anchor === 'start' && Math.abs(title.x - titled.hit.panels[0].box.x) < 0.02 && title.color === '#0072b2' && title.weight === 'bold' && titled.hit.panels[0].box.y > plainBox.y + 14);
 const empty = P.layout(Object.assign(P.defaults(), { panels: [Object.assign(P.panel('p1'), { y: P.axis({ scale: 'log' }), series: [P.series({ id: 'r1' })] })] }), () => ({ x: [1, 2], y: [-1, -2] }));
 ok('a logarithmic axis with no positive value is said, not drawn empty in silence', empty.hit.warnings.length === 1 && /none of its values is positive/.test(empty.hit.warnings[0]));
 const long = Array.from({ length: 50000 }, (_, i) => i), dense = P.layout(Object.assign(P.defaults(), { panels: [Object.assign(P.panel('p1'), { series: [P.series({ id: 'r1', type: 'line' })] })] }), () => ({ x: long, y: long.map((v) => Math.sin(v / 50)) }));

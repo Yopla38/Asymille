@@ -68,7 +68,7 @@ An expression (a custom fit function, a tie between parameters) is parsed by `as
 
 ## Conventions
 
-- The README states counts and measured facts (35 functions, 18 operations, 28 presets, 124 tests, 29 check lines, the NIST tolerances). When a change moves one, update the sentence, and say what was measured and what was not in the same plain register.
+- The README states counts and measured facts (35 functions, 18 operations, 28 presets, 124 tests, 34 check lines, the NIST tolerances). When a change moves one, update the sentence, and say what was measured and what was not in the same plain register.
 - The journal presets in `asymille/journals.py` are written by hand from the guides for authors; `CHECKED` says they were not re-read from the publishers. Do not present them as verified unless they were.
 - A result is never invented: a fit that fails says why, an operation that cannot be done says why, and a warning is attached to a number that should not be trusted.
 - Commit subjects are one plain sentence saying what changed.
