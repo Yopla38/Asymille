@@ -71,7 +71,8 @@ fit.result = { success: true, redchi: 1, rsquared: 0.9, npoints: 3, params: [], 
 M.showFit(fit, graph, { band: true, components: true }); M.showResiduals(fit, graph);
 graph.figure.panels[0].y2 = P.axis({ label: 'Second (\\mu{}V)' });
 graph.figure.panels[0].notes.push({ id: M.id('n'), type: 'text', x: 2, y: 30, text: 'T = 4 K', size: 8, coords: 'data' }, { id: M.id('n'), type: 'span', x: 1.5, x2: 2.5, color: '#e69f00', opacity: 0.2 });
-M.log('Checked.'); M.commit();
+M.log('Checked.'); M.doc.log.forEach((l) => { l.at = '2026-01-01T00:00:00.000Z'; });        // the same project at every run
+M.commit();
 const data = M.seriesData;
 ok('a series of data reads its columns, with NaN where a cell is text', (() => { const d = data(graph.figure.panels[0].series.find((r) => r.kind === 'data')); return d.x.length === 4 && isNaN(d.y[1]) && d.yerr[3] === 2 && d.label === 'Counts'; })());
 ok('the curves of a fit are series of the graph: total, band, components, residuals in a panel below', graph.figure.panels.length === 2 && graph.figure.panels[0].series.length === 5 && data(graph.figure.panels[1].series[0]).y.length === 3 && graph.figure.layout.shareX === true);

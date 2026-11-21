@@ -57,7 +57,7 @@ window.ASY = window.ASY || {};
 
     paper.addEventListener('pointerdown', (e) => {
       if (e.button !== 0 || !list) return;
-      const pt = point(e), hp = panelAt(pt), tool = ctx.tool(), key = e.target.getAttribute && e.target.getAttribute('data-k');
+      const pt = point(e), hp = panelAt(pt), tool = ctx.tool(), marked = e.target.closest && e.target.closest('[data-k]'), key = marked ? marked.getAttribute('data-k') : null;        // a text is clicked on one of its runs
       if (tool === 'pointer') {
         const legendOf = list.hit.panels.find((p) => within(pt, p.legend));
         if (legendOf) drag = { kind: 'legend', hp: legendOf, dx: pt.x - legendOf.legend.x, dy: pt.y - legendOf.legend.y, moved: false };

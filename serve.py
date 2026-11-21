@@ -6,7 +6,7 @@
     uv run python serve.py --port 8781 --database /tmp/asymille.db
 
 To serve several people, with accounts: plug asymille.web into Ondelette's
-server (integration/ondelette). This one listens on 127.0.0.1 only.
+server (README: "Plugged into Ondelette"). This one listens on 127.0.0.1 only.
 """
 from __future__ import annotations
 

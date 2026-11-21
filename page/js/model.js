@@ -188,8 +188,19 @@ window.ASY = window.ASY || {};
     const panel = g.figure.panels.find((p) => p.series.some((r) => r.kind === 'data' && r.sheet === f.sheet && r.y === f.y)) || g.figure.panels[0];
     const has = (part, col) => panel.series.some((r) => r.kind === 'fit' && r.fit === f.id && r.part === part && (r.column || null) === (col || null));
     const columnsOf = f.mode === 'single' ? [null] : [f.y].concat(f.more);
+    // one column or several: the curves already there follow. With several, each column is drawn with its data, and its curve in a darker shade of their colour.
+    const mine = (r) => r.kind === 'fit' && r.fit === f.id && r.part !== 'residuals';
+    if (f.mode === 'single') { panel.series = panel.series.filter((r) => !(mine(r) && r.column && r.column !== f.y)); panel.series.forEach((r) => { if (mine(r)) r.column = null; }); }
+    else {
+      panel.series.forEach((r) => { if (mine(r) && !r.column) r.column = f.y; });
+      panel.series = panel.series.filter((r) => !(mine(r) && !columnsOf.includes(r.column)));
+      const s = sheet(f.sheet);
+      columnsOf.forEach((col) => { const c = column(s, col); if (c && !panel.series.some((r) => r.kind === 'data' && r.sheet === f.sheet && r.y === col)) addData(g, panel, s, c, { type: 'scatter' }); });
+    }
+    const darker = (hex) => (hex ? '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * 0.6).toString(16).padStart(2, '0')).join('') : null);
     columnsOf.forEach((col, k) => {
-      const base = col ? (panel.series.find((r) => r.kind === 'data' && r.sheet === f.sheet && r.y === col) || {}).color : null;
+      const base = col ? darker((panel.series.find((r) => r.kind === 'data' && r.sheet === f.sheet && r.y === col) || {}).color) : null;
+      if (col) panel.series.forEach((r) => { if (mine(r) && r.column === col && r.part === 'total' && base) r.color = base; });
       if (!has('total', col)) panel.series.push(P.series({ id: id('r'), kind: 'fit', fit: f.id, part: 'total', column: col, type: 'line', color: base || '#c81d25', marker: 'none', label: '' }));
       if (opt.band && !has('band', col)) panel.series.unshift(P.series({ id: id('r'), kind: 'fit', fit: f.id, part: 'band', column: col, type: 'band', color: base || '#c81d25', legend: false }));
       if (opt.components && (f.model.components || []).length > 1) f.model.components.forEach((c, i) => { if (!has(c.id, col)) panel.series.push(P.series({ id: id('r'), kind: 'fit', fit: f.id, part: c.id, column: col, type: 'line', dash: 'dash', width: 0.8, color: P.PALETTES.okabe[(i + 2) % 8], marker: 'none', legend: k === 0 })); });

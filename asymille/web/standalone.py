@@ -5,7 +5,7 @@
 Everything is kept under one local user, in a SQLite file. There is no sign-in:
 do not expose this server to a network. To serve several people, plug
 ``asymille.web`` into a server that has accounts (Ondelette's ``backend/``:
-see ``integration/ondelette``).
+see "Plugged into Ondelette" in the README).
 
 It speaks to the page as that server does: the same error shape, the same two
 addresses the page asks at start (``auth/me``, ``auth/csrf``), and the same rule

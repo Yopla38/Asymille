@@ -235,11 +235,12 @@ window.ASY = window.ASY || {};
       await T.start();
       app.resetGrid(); app.refresh();
     };
-    const mode = await window.OND.account.start({ slot: $('#account'), onUser: signedIn, links: [{ href: '../', label: 'The study workshop' }, { href: '../first/', label: 'The first workshop' }] });
+    // plugged into Ondelette, the account menu leads to its workshops, as theirs lead here
+    const mode = await window.OND.account.start({ slot: $('#account'), onUser: signedIn, links: [{ href: '../', label: 'Workshop 2 · build a study' }, { href: '../first/', label: 'The first workshop (mock-up)' }] });
     const honest = $('#honest');
     if (mode === 'static') { honest.hidden = false; honest.textContent = 'No server · sheets, graphs, SVG and PNG only'; honest.title = 'Fits, operations, PDF and keeping projects are the server’s. Opened without it, the page still reads files, draws graphs and saves a project to a file.'; }
     else if (window.OND.account.state.user && !window.OND.account.state.user.email) { honest.hidden = false; honest.textContent = 'On this machine · no accounts'; honest.title = 'Served by serve.py: one local user. Plugged into Ondelette, each person has their own projects.'; }
-    else if (mode === 'user' || mode === 'anonymous') { const nav = $('#spaces'); nav.hidden = false; ASY.fill(nav, h('a', { href: '../' }, 'Study workshop'), h('a', { href: '../first/' }, 'First workshop'), h('a', { href: './', 'aria-current': 'page' }, 'Asymille')); }
+
   }
   start();
 })(window.ASY);
