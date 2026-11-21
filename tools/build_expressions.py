@@ -24,7 +24,9 @@ TEXTS = [
     "sin(x)^2 + cos(x)^2", "tan(x) - sinh(x) + cosh(x) - tanh(x)", "asin(0.5) + acos(0.5) + atan(x) + atan2(a, b)", "min(a, b) + max(a, b)*pow(a, 2)", "pi*e", "erf(x) + erfc(x)",
     "heaviside(b) + heaviside(a) + heaviside(0)", "floor(a) + ceil(a) + sign(b)", "A*2 + sqrt(B) - i/n", "((a))", "+a", "a*(b + x0)^2", "1/0", "sqrt(b)", "9^9^9^9", "10*log10(B) + 30",
 ]
-REFUSED = ["", "2x", "2 x", "a +* b", "f(x)", "sin", "sin(1, 2)", "exp()", "a.b", "a[0]", "'a'", "a ? b : c", "a; b", "(a", "a)", "a,b", "__import__('os')", "a = 1", "lambda: 1", "a < b"]
+REFUSED = ["", "2x", "2 x", "a +* b", "f(x)", "sin", "sin(1, 2)", "exp()", "a.b", "a[0]", "'a'", "a ? b : c", "a; b", "(a", "a)", "a,b", "__import__('os')", "a = 1", "lambda: 1", "a < b",
+           # what the formula of a column reads in the page, and a fit function must not: both refuse it here
+           "mean(a)", "a[1]", "if(a > 1, a, b)", "a and b", "max(a)"]
 
 values = []
 for text in TEXTS:

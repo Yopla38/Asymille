@@ -61,7 +61,7 @@ A series names a fit and member sheets, each with the value of what was varied. 
 
 ### Nothing the page sends is executed
 
-An expression (a custom fit function, a tie between parameters) is parsed by `ast.parse` and then walked by `asymille/expressions.py`: numbers, names, `+ - * / ^`, calls of a fixed list of functions. No `eval`, no `sympy.parse_expr`, no attribute access; every number is a float. A tie is checked by that walker before lmfit's own evaluator sees it. A model names functions of the registry; an operation is called by its name. Do not add an endpoint that runs what it receives. The page has its own parser for column formulas (`page/js/expr.js`, no `eval` or `Function` either), and `tests/data/expressions.json` holds the cases both must agree on.
+An expression (a custom fit function, a tie between parameters) is parsed by `ast.parse` and then walked by `asymille/expressions.py`: numbers, names, `+ - * / ^`, calls of a fixed list of functions. No `eval`, no `sympy.parse_expr`, no attribute access; every number is a float. A tie is checked by that walker before lmfit's own evaluator sees it. A model names functions of the registry; an operation is called by its name. Do not add an endpoint that runs what it receives. The page has its own parser (`page/js/expr.js`, no `eval` or `Function` either) with two readers. `compile` reads exactly what the server reads, and `tests/data/expressions.json` holds the cases both must agree on: the fit panel checks a custom function with it, so the page never accepts what the server will refuse. `column` reads that and what only the formula of a column needs (functions of a whole column, `B[i-1]`, comparisons, `and`/`or`/`not`, `if`): computed in the page, never sent, and refused by `compile` and by the server alike (`REFUSED` in `tools/build_expressions.py` holds examples). Do not add these to `asymille/expressions.py` to make the two alike: a fit function has no rows. In `column`, an empty cell is NaN and stays NaN through comparisons and `if`; an aggregate is computed once per run (`e.kept`).
 
 ### Fitting
 
@@ -79,7 +79,7 @@ An expression (a custom fit function, a tie between parameters) is parsed by `as
 
 ## Conventions
 
-- The README states counts and measured facts (35 functions, 18 operations, 28 presets, 128 tests, 52 check lines, the NIST tolerances). When a change moves one, update the sentence, and say what was measured and what was not in the same plain register.
+- The README states counts and measured facts (35 functions, 18 operations, 28 presets, 128 tests, 57 check lines, the NIST tolerances). When a change moves one, update the sentence, and say what was measured and what was not in the same plain register.
 - The journal presets in `asymille/journals.py` are written by hand from the guides for authors; `CHECKED` says they were not re-read from the publishers. Do not present them as verified unless they were.
 - A result is never invented: a fit that fails says why, an operation that cannot be done says why, and a warning is attached to a number that should not be trusted.
 - Commit subjects are one plain sentence saying what changed.

@@ -4,7 +4,8 @@
  *     node tools/check_page.js            prints ok / FAILED per line, exits 1 on a failure
  *     node tools/check_page.js --write    also writes tests/data/project.json, which tests/test_api.py posts to the API
  *
- *   1  formulas (expr.js) give the values asymille/expressions.py gives for the same text (tests/data/expressions.json)
+ *   1  formulas (expr.js) give the values asymille/expressions.py gives for the same text (tests/data/expressions.json);
+ *      the formula of a column reads more (whole columns, other rows, conditions), and a fit function is refused those
  *   2  the importer reads the example files, a European CSV, a file with a heading
  *   3  the project (model.js): formulas, sorting, undo; serialize and restore are exact inverses
  *   5  a series (model.js): the variable read from the names of the files, the same columns found in each file, the
@@ -39,6 +40,18 @@ ok(cases.values.length + ' formulas give the values of asymille/expressions.py',
 let refused = 0;
 for (const text of cases.refused) { try { A.expr.compile(text); ok('formula refused: ' + text, false, 'the page accepted it'); } catch (e) { refused++; } }
 ok(cases.refused.length + ' texts that are not arithmetic are refused', refused === cases.refused.length);
+// the formula of a column reads more than a fit function: whole columns, other rows, conditions
+const table = { n: 5, cols: { A: [1, 2, 3, 4, 5], B: [10, 20, null, 40, 'n/a'] } };
+const colOfText = (text) => A.expr.column(text).run(table).map((v) => (typeof v === 'number' && isFinite(v) ? Number(v.toPrecision(10)) : null)).join();
+const formulas = { 'B/max(B)': '0.25,0.5,,1,', 'B - mean(B)': '-13.33333333,-3.333333333,,16.66666667,', 'sum(B) + count(B) + median(A) + min(A)': '77,77,77,77,77', 'sd(A)': Array(5).fill('1.58113883').join(), 'max(B - A)': '36,36,36,36,36',
+  'max(A, 2.5)': '2.5,2.5,3,4,5', 'B - B[i-1]': ',10,,,', 'B/B[1]': '1,2,,4,', 'A[n] - A': '4,3,2,1,0', 'A[i+1] - A': '1,1,1,1,', 'A[1.5]': ',,,,', 'B > 15': '0,1,,1,', 'if(B > 15, A, -A)': '-1,2,,4,',
+  'if(A >= 2 and not B == 20, 1, 0)': '0,0,,1,', 'A > 4 or A < 2': '1,0,0,0,1', 'if(A > 3, 1/0, 7)': '7,7,7,,', '(A > 1) + (A > 2)': '0,1,2,2,2', 'i*10 + n': '15,25,35,45,55', '2 and 0': '0,0,0,0,0' };
+const wrong = Object.entries(formulas).filter(([text, want]) => colOfText(text) !== want).map(([text]) => text + ' → ' + colOfText(text));
+ok(Object.keys(formulas).length + ' formulas of a column: of whole columns, of other rows, with conditions; an empty cell gives an empty cell', wrong.length === 0, wrong.join(' | '));
+const said = (text, reader) => { try { A.expr[reader || 'column'](text); return ''; } catch (e) { return e.message; } };
+ok('a formula that cannot be read says why', /condition, the value when it holds/.test(said('if(B > 1, 2)')) && /a < b and b < c/.test(said('1 < A < 3')) && /bracket is not closed/.test(said('B[1')) && /not expected here/.test(said('if + 1')) && /one: a whole column/.test(said('max(A, B, 3)'))
+  && A.expr.column('B[i-1] + mean(C)').names.sort().join() === 'B,C,i');
+ok('a fit function is told that these belong to columns, before the server refuses it', /for the formula of a column/.test(said('mean(a)', 'compile')) && /rows of a column/.test(said('a[1]', 'compile')) && /comparisons/.test(said('if(x > 1, a, b)', 'compile')) && /comparisons/.test(said('a > b', 'compile')));
 
 // 2 ── reading files
 const spectrum = A.importer.read(read('examples/NW1051-NW1.txt'), 'NW1051-NW1.txt');
@@ -56,6 +69,10 @@ const sheet = M.sheetFrom('Peaks', [{ title: 'Energy', unit: 'eV', values: [3, 1
 const twice = M.addColumn(sheet, { formula: 'B*2 + i' });
 M.changed(sheet);
 ok('a formula column is computed row by row, and a cell of text gives an empty one', JSON.stringify(twice.values) === '[61,22,null,84]', JSON.stringify(twice.values));
+twice.formula = 'B/max(B) + A[1]'; M.recompute(sheet);
+ok('a formula column reads a whole column and another row', JSON.stringify(twice.values) === '[3.75,3.25,null,4]', JSON.stringify(twice.values));
+twice.formula = 'if(D > 1, 1, 0)'; M.recompute(sheet);
+ok('a column cannot be computed from itself, in any way', /cannot be computed from itself/.test(M.errors[twice.id] || ''), M.errors[twice.id]);
 twice.formula = 'B*2 + nope'; M.recompute(sheet);
 ok('a formula that names no column says so', /no column is called nope/.test(M.errors[twice.id] || ''));
 twice.formula = 'sqrt(A) + n'; M.recompute(sheet);

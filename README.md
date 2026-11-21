@@ -23,13 +23,13 @@ Check it:
 
 ```bash
 uv run pytest                     # 128 tests: the engine, the API, the figures
-node tools/check_page.js          # 52 lines: the parts of the page that hold logic, run in Node
+node tools/check_page.js          # 57 lines: the parts of the page that hold logic, run in Node
 uv run mypy && uv run ruff check asymille tests tools serve.py
 ```
 
 ## What it does
 
-**Sheets.** Columns of numbers with a short name (`A`, `B`: what formulas use), a title and a unit (what an axis writes), and a role (X, Y, error on Y, error on X, labels). Type in a cell, select with the mouse or the arrows, copy and paste as tab-separated text in both directions with a spreadsheet. A column can be computed from others (`A*1000`, `sqrt(B)`, `i - 1`). Only the rows in sight are drawn, so a hundred thousand rows scroll as ten do. Sorting moves whole rows.
+**Sheets.** Columns of numbers with a short name (`A`, `B`: what formulas use), a title and a unit (what an axis writes), and a role (X, Y, error on Y, error on X, labels). Type in a cell, select with the mouse or the arrows, copy and paste as tab-separated text in both directions with a spreadsheet. A column can be computed from others, as Origin's "set column values" does: row by row (`A*1000`, `sqrt(B)`, `i - 1`), from a whole column (`B/max(B)`, `B - mean(B)`; also `sum`, `sd`, `median`, `min`, `count`, and of a calculation: `max(B - A)`), from another row (`B - B[i-1]`, `B/B[1]`, `B[n]`), and with conditions (`if(A > 5 and B < 2, B, 0)`; `<`, `>`, `<=`, `>=`, `==`, `!=`, `and`, `or`, `not`). It is computed again when what it reads changes. A row where something needed is empty gives an empty cell. A formula reads the columns of its own sheet only, by their short name. Only the rows in sight are drawn, so a hundred thousand rows scroll as ten do. Sorting moves whole rows.
 
 **Import.** Text files with columns (`.txt`, `.dat`, `.csv`…) and Tektronix RSA `.Specan` spectra, read in the browser: nothing is uploaded. The separator, the decimal mark (3.14 or 3,14), the lines of heading and the names of the columns are detected, shown with the first rows, and can be corrected before anything is kept. `Energy (eV)` in a heading becomes a title and a unit. A file dropped anywhere on the page opens the dialog.
 
@@ -112,7 +112,7 @@ Measured, in this repository:
 - **The confidence band.** On 40 simulated decays, a 95 % band covers the true curve at 93.4 % of its points on average (it is a pointwise band).
 - **Operations.** Each on a curve whose answer is known: derivative and integral of sin, a Gaussian's area above its baseline, peaks of known width, a sine's amplitude by Fourier transform, regression against `scipy.stats.linregress`.
 - **Figures.** A PDF has the size asked (to 0.01 pt), holds its font as TrueType, and is the same file when made twice. A figure laid out by the page is drawn by the server in three formats. The two were compared by eye on two figures: axes, ticks, labels and legend sit at the same places.
-- **The two parsers.** The page's formula parser gives the same value as the server's on 28 expressions, and both refuse the same 20 texts that are not arithmetic.
+- **The two parsers.** The page's formula parser gives the same value as the server's on 28 expressions, and both refuse the same 25 texts: 20 that are not arithmetic, and 5 that are the formula of a column (`mean(a)`, `a[1]`, a condition), which a fit function must not be. What only a column reads is checked in Node on 19 formulas, empty cells included.
 - **A series.** In Node, with a stand-in for the server: the columns found again in each file, the operation and the formula repeated, the order of the fits, the start from a neighbour, the second try, the table. In a browser, with the server: eight made-up files of a peak that moves with temperature, one of them with no peak at all. The seven with a peak gave its position within their uncertainty of the true one (8.240 for 8.24 at 20 K, 11.597 for 11.60 at 300 K); the one without was marked "to check" and the two files after it started from the last sound neighbour. Before that rule they started from the lost fit and ended at −224.
 - **The page, in a browser.** Driven with Playwright through the standalone server and through Ondelette's: import of the `.Specan` example, typing and pasting, a formula, plotting, fitting the example (centres found at 7.995 ± 0.006 and 14.494 ± 0.009 for 8 and 14.5), regression, zoom, undo, export to PDF, the list of projects, signing up. No error in the console.
 
