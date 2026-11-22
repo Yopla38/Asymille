@@ -1,0 +1,903 @@
+{
+ "version": 1,
+ "name": "Check",
+ "seq": 38,
+ "sheets": [
+  {
+   "id": "s1",
+   "name": "Sheet 1",
+   "columns": [
+    {
+     "id": "c2",
+     "name": "A",
+     "title": "",
+     "unit": "",
+     "role": "x",
+     "formula": "",
+     "comment": "",
+     "values": [],
+     "made": null
+    },
+    {
+     "id": "c3",
+     "name": "B",
+     "title": "",
+     "unit": "",
+     "role": "y",
+     "formula": "",
+     "comment": "",
+     "values": [],
+     "made": null
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "s4",
+   "name": "Peaks",
+   "columns": [
+    {
+     "id": "c5",
+     "name": "A",
+     "title": "Energy",
+     "unit": "eV",
+     "role": "x",
+     "formula": "",
+     "comment": "",
+     "values": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "made": null
+    },
+    {
+     "id": "c6",
+     "name": "B",
+     "title": "Counts",
+     "unit": "",
+     "role": "y",
+     "formula": "",
+     "comment": "",
+     "values": [
+      10,
+      "n/a",
+      30,
+      40
+     ],
+     "made": null
+    },
+    {
+     "id": "c7",
+     "name": "C",
+     "title": "err",
+     "unit": "",
+     "role": "yerr",
+     "formula": "",
+     "comment": "",
+     "values": [
+      1,
+      1,
+      1,
+      2
+     ],
+     "made": null
+    },
+    {
+     "id": "c8",
+     "name": "D",
+     "title": "",
+     "unit": "",
+     "role": "y",
+     "formula": "sqrt(A) + n",
+     "comment": "",
+     "values": [
+      5,
+      5.414213562373095,
+      5.732050807568877,
+      6
+     ],
+     "made": null
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "s21",
+   "name": "Peaks 180K",
+   "columns": [
+    {
+     "id": "c22",
+     "name": "A",
+     "title": "Energy",
+     "unit": "eV",
+     "role": "x",
+     "formula": "",
+     "comment": "",
+     "values": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "made": null
+    },
+    {
+     "id": "c23",
+     "name": "B",
+     "title": "Counts",
+     "unit": "",
+     "role": "y",
+     "formula": "",
+     "comment": "",
+     "values": [
+      12,
+      22,
+      33,
+      41
+     ],
+     "made": null
+    },
+    {
+     "id": "c24",
+     "name": "C",
+     "title": "err",
+     "unit": "",
+     "role": "yerr",
+     "formula": "",
+     "comment": "",
+     "values": [
+      1,
+      1,
+      1,
+      2
+     ],
+     "made": null
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "s26",
+   "name": "Results of Series of Peaks",
+   "columns": [
+    {
+     "id": "c27",
+     "name": "A",
+     "title": "Temperature",
+     "unit": "K",
+     "role": "x",
+     "formula": "",
+     "comment": "",
+     "values": [
+      160,
+      180
+     ],
+     "made": {
+      "series": "q25",
+      "key": "variable"
+     }
+    },
+    {
+     "id": "c28",
+     "name": "B",
+     "title": "p1 center",
+     "unit": "eV",
+     "role": "y",
+     "formula": "",
+     "comment": "",
+     "values": [
+      null,
+      2.1
+     ],
+     "made": {
+      "series": "q25",
+      "key": "p1_center"
+     }
+    },
+    {
+     "id": "c29",
+     "name": "C",
+     "title": "± p1 center",
+     "unit": "eV",
+     "role": "yerr",
+     "formula": "",
+     "comment": "",
+     "values": [
+      null,
+      0.05
+     ],
+     "made": {
+      "series": "q25",
+      "key": "p1_center:err"
+     }
+    },
+    {
+     "id": "c30",
+     "name": "D",
+     "title": "p1 fwhm",
+     "unit": "eV",
+     "role": "y",
+     "formula": "",
+     "comment": "",
+     "values": [
+      null,
+      1.4
+     ],
+     "made": {
+      "series": "q25",
+      "key": "p1_fwhm"
+     }
+    },
+    {
+     "id": "c31",
+     "name": "E",
+     "title": "± p1 fwhm",
+     "unit": "eV",
+     "role": "yerr",
+     "formula": "",
+     "comment": "",
+     "values": [
+      null,
+      0.1
+     ],
+     "made": {
+      "series": "q25",
+      "key": "p1_fwhm:err"
+     }
+    },
+    {
+     "id": "c32",
+     "name": "F",
+     "title": "Reduced χ²",
+     "unit": "",
+     "role": "y",
+     "formula": "",
+     "comment": "",
+     "values": [
+      null,
+      1.2
+     ],
+     "made": {
+      "series": "q25",
+      "key": "redchi"
+     }
+    },
+    {
+     "id": "c33",
+     "name": "G",
+     "title": "R²",
+     "unit": "",
+     "role": "y",
+     "formula": "",
+     "comment": "",
+     "values": [
+      null,
+      0.98
+     ],
+     "made": {
+      "series": "q25",
+      "key": "rsquared"
+     }
+    },
+    {
+     "id": "c34",
+     "name": "H",
+     "title": "To check",
+     "unit": "",
+     "role": "label",
+     "formula": "",
+     "comment": "",
+     "values": [
+      null,
+      "1 warning"
+     ],
+     "made": {
+      "series": "q25",
+      "key": "check"
+     }
+    },
+    {
+     "id": "c35",
+     "name": "I",
+     "title": "File",
+     "unit": "",
+     "role": "label",
+     "formula": "",
+     "comment": "",
+     "values": [
+      "Peaks",
+      "Peaks 180K"
+     ],
+     "made": {
+      "series": "q25",
+      "key": "file"
+     }
+    }
+   ],
+   "source": "What the series “Series of Peaks” found: one row per file."
+  }
+ ],
+ "graphs": [
+  {
+   "id": "g9",
+   "name": "Peaks",
+   "figure": {
+    "width": 120,
+    "height": 106,
+    "font": "Arial",
+    "background": "#ffffff",
+    "journal": null,
+    "palette": "okabe",
+    "size": {
+     "label": 9,
+     "tick": 8,
+     "legend": 8,
+     "title": 9,
+     "tag": 10
+    },
+    "stroke": {
+     "axis": 0.6,
+     "line": 1.2,
+     "grid": 0.4,
+     "error": 0.6
+    },
+    "tick": {
+     "dir": "in",
+     "len": 3.5,
+     "mirror": true
+    },
+    "frame": "box",
+    "layout": {
+     "cols": 1,
+     "ratios": [
+      3,
+      1
+     ],
+     "gap": 2,
+     "shareX": true
+    },
+    "tags": "none",
+    "panels": [
+     {
+      "id": "p1",
+      "title": "Sample A",
+      "x": {
+       "label": "Energy (eV)",
+       "min": null,
+       "max": null,
+       "scale": "linear",
+       "step": null,
+       "grid": true,
+       "reverse": false,
+       "decimals": null,
+       "gridColor": "#bbbbbb",
+       "gridDash": "dot",
+       "minor": false
+      },
+      "y": {
+       "label": "Counts",
+       "min": null,
+       "max": null,
+       "scale": "linear",
+       "step": null,
+       "grid": false,
+       "reverse": false,
+       "decimals": null
+      },
+      "y2": {
+       "label": "Second (\\mu{}V)",
+       "min": null,
+       "max": null,
+       "scale": "linear",
+       "step": null,
+       "grid": false,
+       "reverse": false,
+       "decimals": null,
+       "color": "#d55e00",
+       "tickDir": "out",
+       "tickSize": 7
+      },
+      "legend": {
+       "show": true,
+       "pos": "ne",
+       "x": 0.6,
+       "y": 0.05,
+       "frame": false
+      },
+      "series": [
+       {
+        "kind": "fit",
+        "axis": "y",
+        "label": "",
+        "type": "band",
+        "color": "#c81d25",
+        "width": null,
+        "dash": "solid",
+        "marker": "circle",
+        "size": 3.5,
+        "open": false,
+        "opacity": 1,
+        "show": true,
+        "legend": false,
+        "id": "r13",
+        "fit": "f11",
+        "part": "band",
+        "column": null
+       },
+       {
+        "kind": "data",
+        "axis": "y",
+        "label": "",
+        "type": "scatter",
+        "color": "#0072b2",
+        "width": null,
+        "dash": "solid",
+        "marker": "circle",
+        "size": 3.5,
+        "open": false,
+        "opacity": 1,
+        "show": true,
+        "legend": true,
+        "id": "r10",
+        "sheet": "s4",
+        "x": "c5",
+        "y": "c6",
+        "yerr": "c7",
+        "xerr": null
+       },
+       {
+        "kind": "fit",
+        "axis": "y",
+        "label": "",
+        "type": "line",
+        "color": "#c81d25",
+        "width": null,
+        "dash": "solid",
+        "marker": "none",
+        "size": 3.5,
+        "open": false,
+        "opacity": 1,
+        "show": true,
+        "legend": true,
+        "id": "r12",
+        "fit": "f11",
+        "part": "total",
+        "column": null
+       },
+       {
+        "kind": "fit",
+        "axis": "y",
+        "label": "",
+        "type": "line",
+        "color": "#009e73",
+        "width": 0.8,
+        "dash": "dash",
+        "marker": "none",
+        "size": 3.5,
+        "open": false,
+        "opacity": 1,
+        "show": true,
+        "legend": true,
+        "id": "r14",
+        "fit": "f11",
+        "part": "p1",
+        "column": null
+       },
+       {
+        "kind": "fit",
+        "axis": "y",
+        "label": "",
+        "type": "line",
+        "color": "#cc79a7",
+        "width": 0.8,
+        "dash": "dash",
+        "marker": "none",
+        "size": 3.5,
+        "open": false,
+        "opacity": 1,
+        "show": true,
+        "legend": true,
+        "id": "r15",
+        "fit": "f11",
+        "part": "b1",
+        "column": null
+       }
+      ],
+      "notes": [
+       {
+        "id": "n19",
+        "type": "text",
+        "x": 2,
+        "y": 30,
+        "text": "T = 4 K",
+        "size": 8,
+        "coords": "data"
+       },
+       {
+        "id": "n20",
+        "type": "span",
+        "x": 1.5,
+        "x2": 2.5,
+        "color": "#e69f00",
+        "opacity": 0.2
+       }
+      ],
+      "titleSize": 11,
+      "titleAlign": "left",
+      "titleColor": "#0072b2",
+      "titleBold": true
+     },
+     {
+      "id": "p16",
+      "title": "",
+      "x": {
+       "label": "Energy (eV)",
+       "min": null,
+       "max": null,
+       "scale": "linear",
+       "step": null,
+       "grid": false,
+       "reverse": false,
+       "decimals": null
+      },
+      "y": {
+       "label": "Residual",
+       "min": null,
+       "max": null,
+       "scale": "linear",
+       "step": null,
+       "grid": false,
+       "reverse": false,
+       "decimals": null
+      },
+      "y2": null,
+      "legend": {
+       "show": false,
+       "pos": "ne",
+       "x": 0.6,
+       "y": 0.05,
+       "frame": false
+      },
+      "series": [
+       {
+        "kind": "fit",
+        "axis": "y",
+        "label": "",
+        "type": "scatter",
+        "color": "#000000",
+        "width": null,
+        "dash": "solid",
+        "marker": "circle",
+        "size": 2.2,
+        "open": false,
+        "opacity": 1,
+        "show": true,
+        "legend": false,
+        "id": "r17",
+        "fit": "f11",
+        "part": "residuals",
+        "column": null
+       }
+      ],
+      "notes": [
+       {
+        "id": "n18",
+        "type": "hline",
+        "y": 0,
+        "color": "#888888",
+        "width": 0.6,
+        "dash": "dash"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "g36",
+   "name": "Each fit of Series of Peaks",
+   "figure": {
+    "width": 120,
+    "height": 85,
+    "font": "Arial",
+    "background": "#ffffff",
+    "journal": null,
+    "palette": "okabe",
+    "size": {
+     "label": 9,
+     "tick": 8,
+     "legend": 8,
+     "title": 9,
+     "tag": 10
+    },
+    "stroke": {
+     "axis": 0.6,
+     "line": 1.2,
+     "grid": 0.4,
+     "error": 0.6
+    },
+    "tick": {
+     "dir": "in",
+     "len": 3.5,
+     "mirror": true
+    },
+    "frame": "box",
+    "layout": {
+     "cols": 1,
+     "ratios": [],
+     "gap": 2,
+     "shareX": false
+    },
+    "tags": "none",
+    "panels": [
+     {
+      "id": "p1",
+      "title": "",
+      "x": {
+       "label": "Energy (eV)",
+       "min": null,
+       "max": null,
+       "scale": "linear",
+       "step": null,
+       "grid": false,
+       "reverse": false,
+       "decimals": null
+      },
+      "y": {
+       "label": "Counts",
+       "min": null,
+       "max": null,
+       "scale": "linear",
+       "step": null,
+       "grid": false,
+       "reverse": false,
+       "decimals": null
+      },
+      "y2": null,
+      "legend": {
+       "show": true,
+       "pos": "ne",
+       "x": 0.6,
+       "y": 0.05,
+       "frame": false
+      },
+      "series": [
+       {
+        "kind": "data",
+        "axis": "y",
+        "label": "",
+        "type": "scatter",
+        "color": "#0072b2",
+        "width": null,
+        "dash": "solid",
+        "marker": "circle",
+        "size": 3.5,
+        "open": false,
+        "opacity": 1,
+        "show": true,
+        "legend": true,
+        "id": "r37",
+        "follow": "q25",
+        "sheet": "s4",
+        "x": "c5",
+        "y": "c6",
+        "yerr": "c7",
+        "xerr": null
+       },
+       {
+        "kind": "member",
+        "axis": "y",
+        "label": "",
+        "type": "line",
+        "color": "#c81d25",
+        "width": null,
+        "dash": "solid",
+        "marker": "none",
+        "size": 3.5,
+        "open": false,
+        "opacity": 1,
+        "show": true,
+        "legend": true,
+        "id": "r38",
+        "series": "q25",
+        "part": "total"
+       }
+      ],
+      "notes": []
+     }
+    ]
+   }
+  }
+ ],
+ "fits": [
+  {
+   "id": "f11",
+   "name": "Fit of Counts",
+   "sheet": "s4",
+   "x": "c5",
+   "y": "c6",
+   "yerr": "c7",
+   "xerr": null,
+   "response": null,
+   "more": [],
+   "mode": "single",
+   "shared": [],
+   "limits": [
+    0.5,
+    null
+   ],
+   "model": {
+    "components": [
+     {
+      "id": "p1",
+      "fn": "gaussian",
+      "params": {
+       "center": {
+        "value": 2,
+        "vary": true,
+        "min": null,
+        "max": null,
+        "expr": ""
+       }
+      }
+     },
+     {
+      "id": "b1",
+      "fn": "constant",
+      "params": {}
+     }
+    ]
+   },
+   "options": {
+    "method": "leastsq",
+    "weights": "instrumental",
+    "absolute_sigma": false,
+    "loss": "linear",
+    "level": 0.95,
+    "points": 800,
+    "intervals": false
+   },
+   "result": {
+    "success": true,
+    "redchi": 1,
+    "rsquared": 0.9,
+    "npoints": 3,
+    "params": [],
+    "derived": [],
+    "warnings": [],
+    "correlations": [],
+    "curve": {
+     "x": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "y": [
+      10,
+      20,
+      30,
+      40
+     ],
+     "components": {
+      "p1": [
+       1,
+       2,
+       3,
+       4
+      ],
+      "b1": [
+       9,
+       18,
+       27,
+       36
+      ]
+     },
+     "band": {
+      "level": 0.95,
+      "lower": [
+       9,
+       19,
+       29,
+       39
+      ],
+      "upper": [
+       11,
+       21,
+       31,
+       41
+      ]
+     },
+     "prediction": null
+    },
+    "residuals": {
+     "x": [
+      1,
+      3,
+      4
+     ],
+     "y": [
+      0.1,
+      -0.1,
+      0
+     ]
+    }
+   },
+   "results": {},
+   "stale": false
+  }
+ ],
+ "series": [
+  {
+   "id": "q25",
+   "name": "Series of Peaks",
+   "fit": "f11",
+   "variable": {
+    "name": "Temperature",
+    "unit": "K"
+   },
+   "members": [
+    {
+     "sheet": "s4",
+     "value": 160,
+     "state": "todo",
+     "message": "",
+     "result": null
+    },
+    {
+     "sheet": "s21",
+     "value": 180,
+     "state": "done",
+     "message": "",
+     "result": {
+      "success": true,
+      "message": "",
+      "redchi": 1.2,
+      "rsquared": 0.98,
+      "npoints": 4,
+      "nvarys": 4,
+      "warnings": [
+       "p1_sigma ended on its bound"
+      ],
+      "params": [
+       {
+        "name": "p1_center",
+        "value": 2.1,
+        "stderr": 0.05,
+        "vary": true,
+        "tied": ""
+       }
+      ],
+      "derived": [
+       {
+        "name": "p1_fwhm",
+        "label": "full width at half maximum",
+        "value": 1.4,
+        "stderr": 0.1
+       }
+      ]
+     }
+    }
+   ],
+   "chain": true,
+   "results": "s26",
+   "graph": "g36",
+   "current": "s4",
+   "ran": ""
+  }
+ ],
+ "log": [
+  {
+   "at": "2026-01-01T00:00:00.000Z",
+   "text": "Checked."
+  }
+ ],
+ "view": {
+  "main": "graph",
+  "sheet": "s1",
+  "graph": "g9",
+  "fit": "f11"
+ }
+}

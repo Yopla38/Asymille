@@ -67,6 +67,13 @@ An expression (a custom fit function, a tie between parameters) is parsed by `as
 
 `fitting._solve` builds lmfit parameters, minimises, then always ends with a `least_squares` descent with a central-difference Jacobian and tight tolerances (`TOLERANCE`): that last step is what makes the NIST tests pass at 1e-6. `gtol` is disabled on purpose (it is absolute, and stops at once on data of small magnitude). Uncertainties of derived quantities and of the curve come from `_propagate` (finite differences through the covariance matrix, ties followed). A refusal is a `FitError` whose message is written for the person: the API passes it on as it is.
 
+Everything that compares the model with data goes through two functions of `fitting.py`: `_at(model, params, data)` (the model at the points of a dataset) and `_residual` (model minus data in units of the error bars). Call them, not `model.evaluate` on `data.x`, or a new feature will ignore the two things a dataset may bring:
+
+- **errors of x** (`Data.sx`): `_residual` then moves each point along x to the nearest place of the curve (guarded Gauss–Newton steps from 0) and returns that distance, signed. The tests hold it to York's line and to ODRPACK's numbers, written in the tests: `scipy.odr` is deprecated and is not imported;
+- **a measured response** (`Data.grid`, `kernel`, `index`): the model is computed on every x of the measurement, convolved, and read at the fitted points, so that a range that starts after the pulse still sees the pulse. The response is a component of the model (`fn: "response"`, kind `response` in the registry) whose only parameter is its shift: that is what makes the shift a parameter like the others in the panel, the one-line notation, ties and series. `Model.convolved(c)` says which components it acts on (all but baselines); its own curve is zero and is left out of what is drawn (`_shown`).
+
+`compare` takes numbers the page already holds (points, fitted parameters, χ²) and decides nothing about which fits may be compared: `comparable` in `page/js/model.js` does (the same columns, range, weights and loss).
+
 ### The host
 
 `asymille/web/host.py` is what Asymille asks of a server: its declarative base, the owner column, a session, who is signed in, how to raise an error. `build(host)` defines the one table (`asymille_projects`) on the host's base and returns the router. Every query on a project carries `owner_id` in the statement itself; a project of someone else is a 404. `standalone.py` is the smallest host (one user, SQLite, tables made with `create_all`); Ondelette's is `backend/app/asymille.py` in `Bigdft_ui`, with a migration.
@@ -79,7 +86,7 @@ An expression (a custom fit function, a tie between parameters) is parsed by `as
 
 ## Conventions
 
-- The README states counts and measured facts (35 functions, 18 operations, 28 presets, 128 tests, 57 check lines, the NIST tolerances). When a change moves one, update the sentence, and say what was measured and what was not in the same plain register.
+- The README states counts and measured facts (55 functions and the instrument response, 18 operations, 28 presets, 147 tests, 61 check lines, the NIST tolerances). When a change moves one, update the sentence, and say what was measured and what was not in the same plain register.
 - The journal presets in `asymille/journals.py` are written by hand from the guides for authors; `CHECKED` says they were not re-read from the publishers. Do not present them as verified unless they were.
 - A result is never invented: a fit that fails says why, an operation that cannot be done says why, and a warning is attached to a number that should not be trusted.
 - Commit subjects are one plain sentence saying what changed.

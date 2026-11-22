@@ -49,7 +49,7 @@ def page() -> Page:
 
 def test_the_catalogue_is_what_the_page_draws_its_lists_from(page: Page) -> None:
     cat = page.get("/catalogue").json()
-    assert len(cat["functions"]) == 35 and len(cat["operations"]) == 18 and len(cat["journals"]["presets"]) == 28
+    assert len(cat["functions"]) == 56 and len(cat["operations"]) == 18 and cat["families"][-1] == "Instrument response" and len(cat["journals"]["presets"]) == 28
     gaussian = next(f for f in cat["functions"] if f["name"] == "gaussian")
     assert gaussian["family"] == "Peaks" and [p["name"] for p in gaussian["params"]] == ["amplitude", "center", "sigma"] and gaussian["tex"].startswith("y = ")
     nature = next(p for p in cat["journals"]["presets"] if p["id"] == "nature-1")
@@ -201,6 +201,32 @@ def test_guess_evaluate_fit_through_the_api(page: Page) -> None:
     assert len(both["datasets"]) == 2 and both["shared"] == ["p1_center", "p1_sigma"]
     text = page.post("/model/write", {"model": started}).json()["text"]
     assert text.startswith("p1:gaussian(amplitude~") and page.post("/model/parse", {"text": text}).json()["model"] == started
+
+
+def test_errors_of_x_a_response_and_a_comparison_through_the_api(page: Page) -> None:
+    line = {"components": [{"id": "b", "fn": "linear", "params": {}}]}
+    x, y = [0.0, 0.9, 1.8, 2.6, 3.3, 4.4, 5.2, 6.1, 6.5, 7.4], [5.9, 5.4, 4.4, 4.6, 3.5, 3.7, 2.8, 2.8, 2.4, 1.5]
+    sx, sy = [w ** -0.5 for w in (1000, 1000, 500, 800, 200, 80, 60, 20, 1.8, 1.0)], [w ** -0.5 for w in (1.0, 1.8, 4.0, 8.0, 20, 20, 70, 70, 100, 500)]
+    both = page.post("/fit", {"x": x, "y": y, "sigma": sy, "sigma_x": sx, "model": line, "options": {"weights": "instrumental"}}).json()
+    assert both["x_errors"] and {p["name"]: round(p["value"], 6) for p in both["params"]} == {"b_slope": -0.480533, "b_intercept": 5.47991}            # York's line
+    refused = page.post("/fit", {"x": x, "y": y, "sigma_x": sx, "model": line})
+    assert refused.status_code == 422 and "together with errors on y" in refused.json()["error"]["message"]
+    t = np.arange(400) * 0.1
+    pulse = np.exp(-(t - 3) ** 2 / 0.08)
+    decay = np.convolve(pulse / pulse.sum(), 500 * np.exp(-t / 4.0))[:400] + 2
+    model = {"components": [{"id": "r1", "fn": "response", "params": {}}, {"id": "e1", "fn": "exp_decay", "params": {"y0": {"value": 0, "vary": False}}}, {"id": "b1", "fn": "constant", "params": {}}]}
+    started = page.post("/model/guess", {"x": t.tolist(), "y": decay.tolist(), "model": model}).json()["model"]
+    drawn = page.post("/model/evaluate", {"model": started, "x": t.tolist(), "response": pulse.tolist()}).json()
+    assert len(drawn["y"]) == 400 and set(drawn["components"]) == {"e1", "b1"}
+    result = page.post("/fit", {"x": t.tolist(), "y": decay.tolist(), "response": pulse.tolist(), "model": started}).json()
+    assert result["response"] and {p["name"]: round(p["value"], 5) for p in result["params"] if p["vary"]} == {"r1_shift": 0, "e1_A": 500, "e1_tau": 4, "b1_c": 2} and json.dumps(result)
+    missing = page.post("/fit", {"x": t.tolist(), "y": decay.tolist(), "model": started})
+    assert missing.status_code == 422 and "choose the column that holds it" in missing.json()["error"]["message"]
+    said = page.post("/fit/compare", {"fits": [{"name": "one", "ndata": 400, "nvarys": 3, "chisqr": 52.0}, {"name": "two", "ndata": 400, "nvarys": 5, "chisqr": 40.0}]}).json()
+    assert said["best"] == "two" and said["tests"][0]["df"] == [2, 395] and said["tests"][0]["p"] < 1e-20 and len(said["fits"]) == 2
+    unlike = page.post("/fit/compare", {"fits": [{"name": "one", "ndata": 400, "nvarys": 3, "chisqr": 52.0}, {"name": "two", "ndata": 399, "nvarys": 5, "chisqr": 40.0}]})
+    assert unlike.status_code == 422 and "only fits of the same points" in unlike.json()["error"]["message"]
+    assert page.post("/fit/compare", {"fits": [{"name": "one", "ndata": 400, "nvarys": 3, "chisqr": 0}, {"name": "two", "ndata": 400, "nvarys": 5, "chisqr": 40.0}]}).status_code == 422
 
 
 def test_an_operation_and_a_figure_through_the_api(page: Page) -> None:

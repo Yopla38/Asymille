@@ -1,0 +1,154 @@
+{
+ "env": {
+  "x": 1.7,
+  "a": 2.5,
+  "b": -0.75,
+  "tau": 3.0,
+  "A": 4.0,
+  "B": 9.0,
+  "i": 3.0,
+  "n": 10.0,
+  "x0": 0.3
+ },
+ "values": [
+  {
+   "text": "1 + 2*3",
+   "value": 7.0
+  },
+  {
+   "text": "2^3^2",
+   "value": 512.0
+  },
+  {
+   "text": "-2^2",
+   "value": -4.0
+  },
+  {
+   "text": "(-2)^2",
+   "value": 4.0
+  },
+  {
+   "text": "2**-1",
+   "value": 0.5
+  },
+  {
+   "text": "-x^2",
+   "value": -2.8899999999999997
+  },
+  {
+   "text": "a - b - 1",
+   "value": 2.25
+  },
+  {
+   "text": "a/b/2",
+   "value": -1.6666666666666667
+  },
+  {
+   "text": "a*-b",
+   "value": 1.875
+  },
+  {
+   "text": "1e3 + 1.5E-2 + .5",
+   "value": 1000.515
+  },
+  {
+   "text": "a*exp(-x/tau) + b",
+   "value": 0.6685341719925095
+  },
+  {
+   "text": "sqrt(abs(b)) + ln(a) + log(a) + log10(100) + log2(8)",
+   "value": 7.698606867532749
+  },
+  {
+   "text": "sin(x)^2 + cos(x)^2",
+   "value": 0.9999999999999999
+  },
+  {
+   "text": "tan(x) - sinh(x) + cosh(x) - tanh(x)",
+   "value": -8.449327686009523
+  },
+  {
+   "text": "asin(0.5) + acos(0.5) + atan(x) + atan2(a, b)",
+   "value": 4.472121707603751
+  },
+  {
+   "text": "min(a, b) + max(a, b)*pow(a, 2)",
+   "value": 14.875
+  },
+  {
+   "text": "pi*e",
+   "value": 8.539734222673566
+  },
+  {
+   "text": "erf(x) + erfc(x)",
+   "value": 1.0
+  },
+  {
+   "text": "heaviside(b) + heaviside(a) + heaviside(0)",
+   "value": 1.5
+  },
+  {
+   "text": "floor(a) + ceil(a) + sign(b)",
+   "value": 4.0
+  },
+  {
+   "text": "A*2 + sqrt(B) - i/n",
+   "value": 10.7
+  },
+  {
+   "text": "((a))",
+   "value": 2.5
+  },
+  {
+   "text": "+a",
+   "value": 2.5
+  },
+  {
+   "text": "a*(b + x0)^2",
+   "value": 0.5062500000000001
+  },
+  {
+   "text": "1/0",
+   "value": null
+  },
+  {
+   "text": "sqrt(b)",
+   "value": null
+  },
+  {
+   "text": "9^9^9^9",
+   "value": null
+  },
+  {
+   "text": "10*log10(B) + 30",
+   "value": 39.54242509439325
+  }
+ ],
+ "refused": [
+  "",
+  "2x",
+  "2 x",
+  "a +* b",
+  "f(x)",
+  "sin",
+  "sin(1, 2)",
+  "exp()",
+  "a.b",
+  "a[0]",
+  "'a'",
+  "a ? b : c",
+  "a; b",
+  "(a",
+  "a)",
+  "a,b",
+  "__import__('os')",
+  "a = 1",
+  "lambda: 1",
+  "a < b",
+  "mean(a)",
+  "a[1]",
+  "if(a > 1, a, b)",
+  "a and b",
+  "max(a)"
+ ]
+}

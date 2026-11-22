@@ -34,15 +34,23 @@ def test_expressions_refuse_everything_else(text: str, said: str) -> None:
         Expression(text)
 
 
+# where a function is looked at when it is not defined, or says nothing, on the general range
+RANGES = {**dict.fromkeys(("lognormal", "power_law", "arrhenius", "hill", "stretched_exp", "langmuir", "michaelis_menten", "power_offset", "logarithm", "weibull", "planck", "bose_einstein",
+                           "thermal_quenching", "thermal_quenching2", "curie_weiss"), (0.05, 30)), "vft": (200, 400), "diode": (-0.5, 0.8), "varshni": (0, 300)}
+
+
 def test_every_function_of_the_registry() -> None:
     """Each one evaluates, is described, starts from the data, and its derived quantities agree with its own curve."""
-    assert len(functions.REGISTRY) == 35 and {f["family"] for f in functions.described()} == set(functions.FAMILIES)
+    assert len(functions.REGISTRY) == 56 and {f["family"] for f in functions.described()} == set(functions.FAMILIES)
     for f in functions.REGISTRY.values():
         defaults = {p.name: p.default for p in f.params}
-        x = np.linspace(0.05, 30, 3000) if f.name in ("lognormal", "power_law", "arrhenius", "hill", "stretched_exp", "langmuir", "michaelis_menten") else X
+        x = np.linspace(*RANGES[f.name], 3000) if f.name in RANGES else X
         y = f.call(x, **defaults)
         assert y.shape == x.shape and np.all(np.isfinite(y)), f.name
-        assert f.tex.startswith("y = ") and all(p.label for p in f.params), f.name
+        assert f.tex.startswith("y") and " = " in f.tex and all(p.label for p in f.params), f.name
+        assert f.kind in ("peak", "baseline", "curve", "response"), f.name
+        for d in f.derived:
+            assert math.isfinite(d.of(defaults)), (f.name, d.name)
         if f.kind == "peak":
             assert f.from_peak is not None, f.name
             started = f.from_peak(5.0, 3.0, 1.5)                     # a peak at 5, 3 high, 1.5 wide at half maximum
@@ -55,10 +63,44 @@ def test_every_function_of_the_registry() -> None:
             assert set(guessed) <= set(f.names) | {"x0"} and all(math.isfinite(v) for v in guessed.values()), f.name
 
 
-@pytest.mark.parametrize("name", ["gaussian", "lorentzian", "voigt", "pseudo_voigt", "pearson7", "moffat", "split_lorentzian"])
+def test_functions_that_hold_a_convolution_or_a_limit() -> None:
+    """Checked against the integral they stand for, taken numerically, and against the forms they must tend to."""
+    from scipy import integrate, special
+    call = {name: functions.get(name).call for name in functions.REGISTRY}
+    for tau, sigma in ((2.0, 0.3), (0.05, 0.3), (50.0, 0.01), (1.0, 5.0)):            # a decay from 0, convolved with a Gaussian of unit area
+        for x in (-1.0, -0.2, 0.0, 0.3, 1.0, 5.0, 20.0):
+            exact = integrate.quad(lambda s, x=x, tau=tau, sigma=sigma: math.exp(-s / tau) * math.exp(-(x - s) ** 2 / (2 * sigma ** 2)) / (sigma * math.sqrt(2 * math.pi)),
+                                   0, max(x, 0) + 10 * sigma, points=[x] if x > 0 else None, limit=400)[0]
+            assert call["decay_gauss"](np.array([x]), 0.0, 1.0, tau, 0.0, sigma)[0] == pytest.approx(exact, rel=1e-9, abs=1e-13), (tau, sigma, x)
+    assert call["decay_gauss"](np.array([-1.0, 2.0]), 0.5, 3.0, 2.0, 0.0, 0.0) == pytest.approx([0.5, 0.5 + 3 / math.e])           # no width: a plain decay from x0
+    two = call["decay2_gauss"](X, 0.1, 2.0, 1.0, 3.0, 5.0, 0.5, 0.2)
+    assert two == pytest.approx(0.1 + call["decay_gauss"](X, 0, 2.0, 1.0, 0.5, 0.2) + call["decay_gauss"](X, 0, 3.0, 5.0, 0.5, 0.2))
+    x = np.linspace(-1, 1, 41)
+    for kt, sigma in ((0.025, 0.05), (0.05, 0.025), (0.05, 0.0499), (0.05, 0.0501), (0.1, 1e-4)):           # a Fermi edge through a Gaussian, on both sides of where the sum changes hands
+        exact = [integrate.quad(lambda s, v=v, kt=kt, sigma=sigma: special.expit(-(v - s) / kt) * math.exp(-s ** 2 / (2 * sigma ** 2)) / (sigma * math.sqrt(2 * math.pi)),
+                                -10 * sigma, 10 * sigma, limit=800)[0] for v in x]
+        assert call["fermi_gaussian"](x, 1.0, 0.0, kt, sigma) == pytest.approx(exact, abs=1e-12), (kt, sigma)
+    assert call["fermi_gaussian"](x, 2.0, 0.1, 1e-7, 0.1) == pytest.approx(special.erfc((x - 0.1) / (0.1 * math.sqrt(2))), abs=1e-6)       # no temperature: an error-function step
+    assert call["fermi_gaussian"](x, 2.0, 0.1, 0.05, 0.0) == pytest.approx(call["fermi_dirac"](x, 2.0, 0.1, 0.05))                       # no resolution: the edge itself
+    h = np.linspace(-5, 5, 101)
+    assert call["brillouin"](h, 1.0, 0.5, 1.0) == pytest.approx(np.tanh(h)) and call["brillouin"](h, 2.0, 400.0, 1.0) == pytest.approx(call["langevin"](h, 2.0, 1.0), abs=3e-3)
+    assert call["langevin"](np.array([1e-4, 2e-3, 1.0]), 3.0, 1.0) == pytest.approx([1e-4, 3 * (1 / math.tanh(2e-3) - 500), 3 * (1 / math.tanh(1) - 1)], rel=1e-9)
+    d = 1e-5
+    slope = (call["lorentzian"](X + d, 3.0, 4.0, 1.3) - call["lorentzian"](X - d, 3.0, 4.0, 1.3)) / (2 * d)
+    assert call["lorentzian_derivative"](X, 3.0, 4.0, 1.3) == pytest.approx(slope, abs=1e-8)
+    found = functions.get("lorentzian_derivative").guess(X, call["lorentzian_derivative"](X, 3.0, 4.0, 1.3))
+    assert (found["center"], found["sigma"], found["amplitude"]) == pytest.approx((4.0, 1.3, 3.0), rel=2e-3)
+    wavelength = np.linspace(0.1, 10, 990001)
+    assert wavelength[np.argmax(call["planck"](wavelength, 1.0, 5000.0))] == pytest.approx(functions.get("planck").derived[0].of({"A": 1.0, "T": 5000.0}), abs=2e-5)
+    t = np.linspace(5, 300, 60)
+    assert call["thermal_quenching2"](t, i0=2.0, c=50.0, ea=0.01, c2=0.0, ea2=0.05) == pytest.approx(call["thermal_quenching"](t, i0=2.0, c=50.0, ea=0.01))
+    assert call["weibull"](np.array([0.0, 2.0]), 4.0, 2.0, 1.7) == pytest.approx([0, 4 * (1 - 1 / math.e)]) and call["gompertz"](np.array([3.0]), 5.0, 3.0, 2.0)[0] == pytest.approx(5 / math.e)
+
+
+@pytest.mark.parametrize("name", ["gaussian", "lorentzian", "voigt", "pseudo_voigt", "pearson7", "moffat", "split_lorentzian", "split_gaussian", "sinc2"])
 def test_derived_width_and_height_agree_with_the_curve(name: str) -> None:
     f = functions.get(name)
-    values = {"amplitude": 3.0, "center": 4.0, "sigma": 1.3, "gamma": 0.7, "fraction": 0.35, "expon": 2.2, "beta": 1.7, "sigma_r": 2.1}
+    values = {"amplitude": 3.0, "center": 4.0, "sigma": 1.3, "gamma": 0.7, "fraction": 0.35, "expon": 2.2, "beta": 1.7, "sigma_r": 2.1, "width": 1.9}
     values = {k: v for k, v in values.items() if k in f.names}
     x = np.linspace(-200, 200, 4_000_001)
     y = f.call(x, **values)
@@ -67,7 +109,7 @@ def test_derived_width_and_height_agree_with_the_curve(name: str) -> None:
     if "height" in derived:
         assert derived["height"] == pytest.approx(top, rel=1e-6)
     above = x[y >= top / 2]
-    assert derived["fwhm"] == pytest.approx(above[-1] - above[0], rel=3e-4 if name == "voigt" else 1e-4)        # Voigt: an approximation good to 0.02 %
+    assert derived["fwhm"] == pytest.approx(above[-1] - above[0], rel=3e-4 if name in ("voigt", "sinc2") else 1e-4)        # Voigt: an approximation good to 0.02 %; sinc²: the grid is 1e-4 of its width
     if f.params[0].label == "area under the peak":
         assert np.trapezoid(y, x) == pytest.approx(3.0, rel=1e-2 if name in ("lorentzian", "voigt", "pseudo_voigt", "split_lorentzian") else 1e-6)        # Lorentzian wings reach beyond ±200
 

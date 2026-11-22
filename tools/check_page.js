@@ -108,7 +108,30 @@ ok('the curves of a fit are series of the graph: total, band, components, residu
 const written = JSON.stringify(M.serialize());
 M.restore(JSON.parse(written));
 ok('a project written and read back is the same project', JSON.stringify(M.serialize()) === written);
-ok('what is sent to be fitted: null where a cell is not a number', JSON.stringify(M.fitData(M.fit(fit.id))) === '{"x":[1,2,3,4],"y":[10,null,30,40],"sigma":[1,1,1,2]}');
+ok('what is sent to be fitted: null where a cell is not a number', JSON.stringify(M.fitData(M.fit(fit.id))) === '{"x":[1,2,3,4],"y":[10,null,30,40],"sigma":[1,1,1,2],"sigma_x":null,"response":null}');
+{
+  const f = M.fit(fit.id), err = f.yerr;                 // the error column stands here for the errors of x, then for a response
+  f.xerr = err;
+  const counted = M.fitData(f).sigma_x; f.options.weights = 'none';
+  const ignored = M.fitData(f).sigma_x; f.options.weights = 'instrumental';
+  f.model.components.push({ id: 'r1', fn: 'response', params: { shift: { value: 0, vary: true, min: null, max: null, expr: '' } } });
+  let missing = ''; try { M.fitData(f); } catch (e) { missing = e.message; }
+  f.response = err; f.limits = [2, 3];
+  const d = M.fitData(f), ask = M.drawing(f, d, f.model, 50), cut = ask.cut({ x: ask.body.x, y: [5, 6, 7, 8], components: { p1: [1, 2, 3, 4] } });
+  f.model.components.pop();
+  const plain = M.drawing(f, M.fitData(f), f.model, 5);
+  ok('the errors of x are sent with the weights that count errors, the response with a model that holds one', counted.join() === '1,1,1,2' && ignored === null && /choose the column that holds it/.test(missing)
+    && d.response.join() === '1,1,1,2' && M.fitData(f).response === null && ask.body.x.join() === '1,2,3,4' && ask.body.response.join() === '1,1,1,2' && cut.x.join() === '2,3' && cut.y.join() === '6,7' && cut.components.p1.join() === '2,3'
+    && plain.body.x.join() === '3,3,3,3,3' && plain.body.response === undefined);          // without a response: points spread over the range (here one usable point is in it)
+  M.restore(JSON.parse(written));
+}
+{
+  const both = M.sheetFrom('Both', [{ title: 'x', values: [1, 2] }, { title: 'sx', values: [0.1, 0.2], role: 'xerr' }, { title: 'y', values: [3, 4] }, { title: 'sy', values: [0.3, 0.4], role: 'yerr' }, { title: 'z', values: [5, 6] }]);
+  const g2 = M.plot(both, [both.columns[2]], 'scatter'), drawn = M.seriesData(g2.figure.panels[0].series[0]), withBars = M.addFit(both, both.columns[0], both.columns[2]), without = M.addFit(both, both.columns[0], both.columns[4]);
+  ok('a column of errors of x beside x is drawn as horizontal bars, and counted by a fit that has errors of y too', drawn.xerr.join() === '0.1,0.2' && drawn.yerr.join() === '0.3,0.4' && withBars.xerr === both.columns[1].id && M.fitData(withBars).sigma_x.join() === '0.1,0.2'
+    && without.xerr === null && without.options.weights === 'none' && M.fitData(without).sigma_x === null);
+  M.restore(JSON.parse(written));
+}
 M.removeSheet(sheet.id);
 ok('removing a sheet removes the series and the fits made of it', M.doc.fits.length === 0 && M.doc.graphs[0].figure.panels.every((p) => p.series.length === 0));
 M.undo();
@@ -228,9 +251,19 @@ ok('a curve of 50 000 points is drawn with ' + drawn + ': what a page can show',
   const mark0 = M.mark(fit2); fit2.model.components[0].params.center.value = 4.5;
   const sameMark = M.mark(fit2) === mark0; fit2.limits = [1, 8];
   ok('a series knows the model it was run with: a starting value does not change it, a range does', sameMark && M.mark(fit2) !== mark0 && sr.ran === mark0);
+  // through a response: each file sends its own column, found as the fit's other columns are
+  const marked = M.mark(fit2);
+  fit2.model.components.push({ id: 'r1', fn: 'response', params: { shift: { value: 0, vary: true, min: null, max: null, expr: '' } } }); fit2.response = s20.columns[1].id;
+  const own = M.memberData(sr, s30).response.join() === s30.columns[1].values.join() && M.fitsIn(sr, narrow) !== '' && M.mark(fit2) !== marked;
+  fit2.model.components.pop(); fit2.response = null;
+  ok('a file of a series sends its own response of the instrument, and the series knows the response is part of what it was run with', own && M.mark(fit2) === marked);
+  const copy = M.duplicateFit(fit2), result = (chisqr) => ({ ndata: 10, nvarys: 2, chisqr });
+  const before = M.comparable(fit2, copy); fit2.result = result(4); fit2.stale = false; copy.result = result(3);
+  const both = M.comparable(fit2, copy) && M.comparable(copy, fit2) && !M.comparable(fit2, fit2); copy.limits = [0, 1];
+  ok('a copy of a fit is another fit of the same points: the two can be compared once both are fitted, not when their ranges differ', !before && both && !M.comparable(fit2, copy) && copy.name !== fit2.name && copy.id !== fit2.id && M.doc.view.fit === copy.id);
   const text = JSON.stringify(M.serialize()); M.restore(JSON.parse(text));
-  const old = JSON.parse(text); delete old.series; old.sheets.forEach((s) => s.columns.forEach((c) => { delete c.made; }));
-  ok('a project with a series written and read back is the same; one saved before there were series opens', JSON.stringify(M.serialize()) === text && M.restore(old) && M.doc.series.length === 0 && M.doc.sheets[0].columns[0].made === null);
+  const old = JSON.parse(text); delete old.series; old.sheets.forEach((s) => s.columns.forEach((c) => { delete c.made; })); old.fits.forEach((f) => { delete f.xerr; delete f.response; });
+  ok('a project with a series written and read back is the same; one saved before there were series, errors of x or responses opens', JSON.stringify(M.serialize()) === text && M.restore(old) && M.doc.series.length === 0 && M.doc.sheets[0].columns[0].made === null && M.doc.fits[0].xerr === null && M.doc.fits[0].response === null);
   console.log(failed ? '\n' + failed + ' FAILED' : '\nall ok');
   process.exit(failed ? 1 : 0);
 })();

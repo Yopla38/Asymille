@@ -8,7 +8,7 @@ import pytest
 from nist import load
 
 from asymille import fitting
-from asymille.fitting import FitError, fit, fit_global, guess
+from asymille.fitting import FitError, compare, fit, fit_global, guess
 
 # each NIST problem as an Asymille model: the expression, and which starting values of NIST are used
 NIST = {
@@ -215,3 +215,155 @@ def test_a_fit_that_takes_too_long_is_stopped() -> None:
     result = fit(x, y, guess(x, y, TWO), method="nelder", timeout=0.0)
     assert not result["success"] and "stopped after" in result["message"] and result["warnings"]
     assert fitting.METHODS and fitting.WEIGHTS
+
+
+# ── errors on both axes ──────────────────────────────────────────────────────
+# Pearson's data with York's weights: the line every method for errors on x and y is checked on (York et al., Am. J. Phys. 72, 367, 2004).
+PEARSON_X = [0.0, 0.9, 1.8, 2.6, 3.3, 4.4, 5.2, 6.1, 6.5, 7.4]
+PEARSON_Y = [5.9, 5.4, 4.4, 4.6, 3.5, 3.7, 2.8, 2.8, 2.4, 1.5]
+PEARSON_WX = [1000, 1000, 500, 800, 200, 80, 60, 20, 1.8, 1.0]
+PEARSON_WY = [1.0, 1.8, 4.0, 8.0, 20, 20, 70, 70, 100, 500]
+LINE = {"components": [{"id": "b", "fn": "linear", "params": {"slope": {"value": -1}, "intercept": {"value": 5}}}]}
+
+
+def test_a_line_with_errors_on_x_and_y_is_yorks() -> None:
+    sx, sy = 1 / np.sqrt(PEARSON_WX), 1 / np.sqrt(PEARSON_WY)
+    result = fit(PEARSON_X, PEARSON_Y, LINE, sigma=sy, sigma_x=sx, weights="instrumental", absolute_sigma=True)
+    found = by_name(result)
+    assert result["success"] and result["x_errors"]
+    assert found["b_slope"]["value"] == pytest.approx(-0.48053341, abs=5e-9) and found["b_intercept"]["value"] == pytest.approx(5.47991022, abs=5e-9)        # York's published values
+    assert result["chisqr"] == pytest.approx(11.8663531941, rel=1e-10)
+    # the standard errors are ODRPACK's (scipy.odr 1.18): York's own formula gives 0.0576 and 0.2919, within 1 %
+    assert found["b_slope"]["stderr"] == pytest.approx(0.05798497, rel=1e-6) and found["b_intercept"]["stderr"] == pytest.approx(0.29497058, rel=1e-6)
+    scaled = by_name(fit(PEARSON_X, PEARSON_Y, LINE, sigma=sy, sigma_x=sx, weights="instrumental"))
+    assert scaled["b_slope"]["stderr"] == pytest.approx(0.07062022, rel=1e-6) and scaled["b_intercept"]["stderr"] == pytest.approx(0.35924634, rel=1e-6)
+    vertical = by_name(fit(PEARSON_X, PEARSON_Y, LINE, sigma=sy, weights="instrumental"))
+    assert vertical["b_slope"]["value"] == pytest.approx(-0.6108, abs=1e-3)              # counting the errors of y alone gives another line
+    exact = fit(PEARSON_X, PEARSON_Y, LINE, sigma=sy, sigma_x=np.zeros(10), weights="instrumental")
+    assert by_name(exact)["b_slope"]["value"] == pytest.approx(vertical["b_slope"]["value"], rel=1e-9)        # an x without error counts as before
+
+
+@pytest.mark.parametrize("fn, start, truth, odrpack, sd, rss, rel", [
+    # what ODRPACK (scipy.odr 1.18) gives on the same points: parameters, their standard deviations, the sum of squares
+    ("gaussian", {"amplitude": 1.5, "center": 0, "sigma": 0.8}, lambda x: 2 / (0.6 * math.sqrt(2 * math.pi)) * np.exp(-(x - 0.3) ** 2 / 0.72),
+     {"amplitude": 2.014818233074, "center": 0.310299226672, "sigma": 0.594146663109}, {"amplitude": 0.049508078619, "center": 0.020683881991, "sigma": 0.013812826954}, 30.11824813763694, 1e-7),
+    ("exp_decay", {"A": 2, "tau": 1, "y0": 0.1}, lambda x: 3 * np.exp(-x / 1.5) + 0.4,
+     {"A": 3.054938643826, "tau": 1.47194783176, "y0": 0.404136357878}, {"A": 0.05260028505, "tau": 0.041273163907, "y0": 0.013951679483}, 18.64926423975261, 3e-6),
+])
+def test_a_curve_with_errors_on_x_and_y_agrees_with_odrpack(fn: str, start: dict, truth, odrpack: dict, sd: dict, rss: float, rel: float) -> None:
+    n = 60 if fn == "gaussian" else 40
+    i = np.arange(n)
+    xt = np.linspace(-3, 3, n) if fn == "gaussian" else np.linspace(0.2, 6, n)
+    sx, sy = (np.full(n, 0.15), np.full(n, 0.03)) if fn == "gaussian" else (0.05 + 0.03 * xt, np.full(n, 0.04))
+    x, y = xt + sx * np.sin(7 * i), truth(xt) + sy * np.cos(11 * i)                # scatter without random numbers: the same points everywhere
+    spec = {"components": [{"id": "m", "fn": fn, "params": {k: {"value": v} for k, v in start.items()}}]}
+    result = fit(x, y, spec, sigma=sy, sigma_x=sx, weights="instrumental")
+    found = by_name(result)
+    assert result["success"] and not result["warnings"]
+    for name, value in odrpack.items():
+        assert found[f"m_{name}"]["value"] == pytest.approx(value, rel=rel), name
+        assert found[f"m_{name}"]["stderr"] == pytest.approx(sd[name], rel=10 * rel), name
+    assert result["chisqr"] == pytest.approx(rss, rel=1e-9)
+    assert len(result["residuals"]["standardised"]) == n and sum(v ** 2 for v in result["residuals"]["standardised"]) == pytest.approx(result["nfree"], rel=1e-9)
+
+
+def test_errors_on_x_need_errors_on_y() -> None:
+    with pytest.raises(FitError, match="together with errors on y"):
+        fit(PEARSON_X, PEARSON_Y, LINE, sigma_x=np.ones(10))
+    with pytest.raises(FitError, match="as long as the data"):
+        fit(PEARSON_X, PEARSON_Y, LINE, sigma=np.ones(10), sigma_x=np.ones(9), weights="instrumental")
+    some = np.ones(10)
+    some[3] = np.nan                                                                # a point without its error of x is left out, like one without its error of y
+    assert fit(PEARSON_X, PEARSON_Y, LINE, sigma=np.ones(10), sigma_x=some, weights="instrumental")["npoints"] == 9
+
+
+# ── through the response of the instrument ───────────────────────────────────
+T = np.arange(1024) * 0.05
+IRF = np.exp(-(T - 5) ** 2 / (2 * 0.17 ** 2)) + 0.02 * np.exp(-(T - 5.6) ** 2 / (2 * 0.3 ** 2))             # a pulse with a small tail, 0.4 wide
+DECAY = {"components": [{"id": "r", "fn": "response"}, {"id": "e", "fn": "exp_decay2", "params": {"y0": {"value": 0, "vary": False}}}, {"id": "b", "fn": "constant"}]}
+
+
+def seen(shift: float, a1: float, tau1: float, a2: float, tau2: float, level: float) -> np.ndarray:
+    """Two decays as the instrument shows them, written here without the engine: the response moved, a plain sum for the convolution."""
+    kernel = np.interp(T - shift, T, IRF / IRF.sum(), left=0, right=0)
+    decay = a1 * np.exp(-T / tau1) + a2 * np.exp(-T / tau2)
+    return np.array([np.sum(kernel[: j + 1] * decay[j::-1]) for j in range(len(T))]) + level
+
+
+def test_a_decay_through_a_measured_response() -> None:
+    y = seen(0.031, 9000, 1.2, 3000, 6.0, 12.0)
+    started = guess(T, y, DECAY)
+    result = fit(T, y, started, response=IRF * 1000)                               # the scale of the response does not matter: it is brought to a sum of 1
+    found = by_name(result)
+    assert result["success"] and result["response"] and not result["warnings"]
+    decays = sorted((found[f"e_tau{k}"]["value"], found[f"e_A{k}"]["value"]) for k in (1, 2))            # the two decays may come in either order
+    assert decays == [pytest.approx((1.2, 9000), rel=1e-6), pytest.approx((6.0, 3000), rel=1e-6)]
+    assert found["r_shift"]["value"] == pytest.approx(0.031, rel=1e-6) and found["b_c"]["value"] == pytest.approx(12.0, rel=1e-6)
+    assert result["curve"]["x"] == pytest.approx(T) and set(result["curve"]["components"]) == {"e", "b"}       # the curve is where the instrument measured; the response is not a curve
+    assert result["curve"]["components"]["b"] == pytest.approx(np.full(1024, 12.0)) and result["curve"]["y"] == pytest.approx(y, rel=1e-6)
+    late = fit(T, y, started, response=IRF, limits=[8, 40])                        # a range after the pulse: the response before it still counts
+    assert max(by_name(late)[f"e_tau{k}"]["value"] for k in (1, 2)) == pytest.approx(6.0, rel=1e-6) and late["npoints"] == 641 and late["curve"]["x"][0] == pytest.approx(8.0)
+    plain = fit(T[110:], y[110:], {"components": DECAY["components"][1:]})
+    assert abs(min(by_name(plain)[f"e_tau{k}"]["value"] for k in (1, 2)) - 1.2) > 0.01            # without the response the short decay is not the true one
+    before = fitting.evaluate(started, T, IRF)
+    assert len(before["y"]) == 1024 and set(before["components"]) == {"e", "b"}
+
+
+def test_counting_noise_through_a_response() -> None:
+    rng = np.random.default_rng(1)
+    y = rng.poisson(seen(0.0, 9000, 1.2, 3000, 6.0, 12.0)).astype(float)
+    result = fit(T, y, guess(T, y, DECAY), response=IRF, weights="statistical")
+    found = by_name(result)
+    short, long = sorted((1, 2), key=lambda k: found[f"e_tau{k}"]["value"])
+    for name, value in {f"e_tau{short}": 1.2, f"e_tau{long}": 6.0, f"e_A{short}": 9000, f"e_A{long}": 3000}.items():
+        assert abs(found[name]["value"] - value) < 4 * found[name]["stderr"], name
+    assert 0.8 < result["redchi"] < 1.2 and found[f"e_tau{short}"]["stderr"] < 0.02
+
+
+def test_one_response_for_each_dataset_of_a_global_fit() -> None:
+    spec = {"components": [{"id": "r", "fn": "response", "params": {"shift": {"value": 0, "vary": False}}}, {"id": "e", "fn": "exp_decay", "params": {"y0": {"value": 0, "vary": False}, "A": {"value": 4000}}},
+                           {"id": "b", "fn": "constant"}]}
+    wide = np.exp(-(T - 5) ** 2 / (2 * 0.4 ** 2))
+    one = seen(0.0, 5000, 2.0, 0, 1, 5)
+    kernel = wide / wide.sum()
+    two = np.array([np.sum(kernel[: j + 1] * (9000 * np.exp(-T / 2.0))[j::-1]) for j in range(len(T))]) + 8
+    result = fit_global([{"x": T, "y": one, "response": IRF}, {"x": T, "y": two, "response": wide}], spec, ["e_tau"])
+    assert [by_name(d)["e_A"]["value"] for d in result["datasets"]] == pytest.approx([5000, 9000], rel=1e-6) and by_name(result["datasets"][1])["e_tau"]["value"] == pytest.approx(2.0, rel=1e-6)
+
+
+@pytest.mark.parametrize("more, said", [
+    ({}, "choose the column that holds it"), ({"response": IRF[:-1]}, "as long as the data"), ({"response": IRF * 0}, "its sum is not positive"),
+    ({"response": IRF, "x": np.where(np.arange(1024) == 500, T + 0.02, T)}, "x must increase by even steps"),
+    ({"response": IRF, "sigma": np.ones(1024), "sigma_x": np.ones(1024), "weights": "instrumental"}, "cannot be counted with a measured response"),
+    ({"response": IRF, "spec": {"components": [{"id": "r", "fn": "response"}, {"id": "b", "fn": "linear"}]}}, "needs something to act on"),
+    ({"response": IRF, "spec": {"components": [{"id": "r", "fn": "response"}, {"id": "q", "fn": "response"}, {"id": "e", "fn": "exp_decay"}]}}, "one instrument response at most"),
+])
+def test_a_response_that_cannot_be_used_says_why(more: dict, said: str) -> None:
+    more = dict(more)
+    with pytest.raises(FitError, match=said):
+        fit(more.pop("x", T), seen(0, 100, 2, 0, 1, 0), more.pop("spec", DECAY), **more)
+
+
+# ── which model ──────────────────────────────────────────────────────────────
+def test_two_models_of_the_same_points_are_compared() -> None:
+    x = np.linspace(0, 10, 200)
+    y = 3 * np.exp(-x / 0.8) + 1.5 * np.exp(-x / 4) + 0.2 + 0.02 * np.cos(37 * np.arange(200))
+    one = fit(x, y, {"components": [{"id": "e", "fn": "exp_decay", "params": {"A": {"value": 4}, "tau": {"value": 2}}}]})
+    two = fit(x, y, {"components": [{"id": "e", "fn": "exp_decay2", "params": {"A1": {"value": 3}, "tau1": {"value": 1}, "A2": {"value": 1}, "tau2": {"value": 5}}}]})
+    said = compare([{"name": "one decay", **{k: one[k] for k in ("ndata", "nvarys", "chisqr")}}, {"name": "two decays", **{k: two[k] for k in ("ndata", "nvarys", "chisqr")}}])
+    first, second = said["fits"]
+    assert said["best"] == "two decays" and said["by"] == "aicc" and second["delta"] == 0 and first["weight"] + second["weight"] == pytest.approx(1)
+    assert first["aic"] == pytest.approx(one["aic"]) and second["bic"] == pytest.approx(two["bic"])                 # the same AIC and BIC as each fit shows
+    assert second["aicc"] == pytest.approx(two["aic"] + 2 * 5 * 6 / (200 - 5 - 1))
+    test = said["tests"][0]
+    expected = ((one["chisqr"] - two["chisqr"]) / 2) / (two["chisqr"] / 195)
+    assert (test["simpler"], test["fuller"], test["df"]) == ("one decay", "two decays", [2, 195]) and test["f"] == pytest.approx(expected) and test["p"] < 1e-50
+    assert "holds only if “one decay” is a special case" in test["said"] and "is the one the data support" in said["said"]
+    same = compare([{"name": "a", "ndata": 50, "nvarys": 3, "chisqr": 10.0}, {"name": "b", "ndata": 50, "nvarys": 3, "chisqr": 10.2}, {"name": "c", "ndata": 50, "nvarys": 4, "chisqr": 10.4}])
+    assert "do not tell" in same["said"] and len(same["tests"]) == 2 and same["tests"][0]["f"] is None            # as many parameters: no F test; more parameters and no better: nothing to test
+    far = compare([{"name": "a", "ndata": 600, "nvarys": 4, "chisqr": 34875.3}, {"name": "b", "ndata": 600, "nvarys": 6, "chisqr": 674.1}])            # so far apart that the ratio of likelihoods overflows
+    assert far["best"] == "b" and far["fits"][0]["weight"] == 0 and "no support left" in far["said"] and "p < 1e-300" in far["tests"][0]["said"] and far["tests"][0]["p"] == 0
+    with pytest.raises(FitError, match="only fits of the same points"):
+        compare([{"name": "a", "ndata": 50, "nvarys": 3, "chisqr": 10.0}, {"name": "b", "ndata": 49, "nvarys": 3, "chisqr": 10.5}])
+    with pytest.raises(FitError, match="between 2 and 12"):
+        compare([{"name": "a", "ndata": 50, "nvarys": 3, "chisqr": 10.0}])
