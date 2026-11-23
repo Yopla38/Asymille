@@ -19,9 +19,10 @@ uv run mypy && uv run ruff check asymille tests tools serve.py
 node tools/check_page.js                  # the page's logic in Node: prints ok / FAILED per line, one pass
 node tools/check_page.js --write          # also rewrites tests/data/project.json (see below)
 uv run python tools/build_expressions.py  # rewrites tests/data/expressions.json from asymille/expressions.py
+uv run --with openpyxl --with odfpy python tools/build_spreadsheets.py    # rewrites tests/data/sample.xlsx and sample.ods (those two libraries are for this only)
 ```
 
-Run `pytest` and `mypy` after a change in `asymille/`; `check_page.js` after a change in `page/js/expr.js`, `importer.js`, `plot.js` or `model.js`. There is no automated test of the panels: after a change in `grid.js`, `figview.js`, `inspect.js`, `fitpanel.js`, `dialogs.js` or `app.js`, open the page (Chromium and Playwright are enough) and look.
+Run `pytest` and `mypy` after a change in `asymille/`; `check_page.js` after a change in `page/js/expr.js`, `importer.js`, `files.js`, `plot.js` or `model.js`. There is no automated test of the panels: after a change in `grid.js`, `figview.js`, `inspect.js`, `fitpanel.js`, `dialogs.js` or `app.js`, open the page (Chromium and Playwright are enough) and look.
 
 ## Architecture
 
@@ -74,9 +75,19 @@ Everything that compares the model with data goes through two functions of `fitt
 
 `compare` takes numbers the page already holds (points, fitted parameters, χ²) and decides nothing about which fits may be compared: `comparable` in `page/js/model.js` does (the same columns, range, weights and loss).
 
+### What a fit puts on its graph
+
+A registry entry carries its equation twice: `tex`, typeset in the panel and the report, and `plain`, one line in the markup `plot.js` draws (`x_c`, `^{2}`, `\sigma`). `plain` is written from `tex` by `functions.one_line`; what that cannot write (cases, sums, integrals) is given by hand as `plain=`. A test holds every `plain` to what the page can draw, reading the Greek letters from `plot.js` itself: a new function whose equation uses another TeX command fails there, and wants a `plain=`.
+
+The text a fit writes on a graph is a note of the figure (`type: 'text'`, several lines) that names its fit (`fit`) and what it holds (`of`). `model.refreshFitNotes` writes it again after each fit; a text edited by hand loses `fit` and is left alone. The curve of the fit is hidden with `show: false`, not removed, so that `showFit` after a new fit does not bring it back.
+
+### Files that are not text
+
+`page/js/files.js` reads `.xlsx`, `.ods` and Origin's `.opj` in the browser: nothing is sent. A spreadsheet becomes tab-separated text and goes through `importer.js` like any file, so headings and units are detected the same way. The Origin reader follows what liborigin found of an undocumented format: datasets, then windows whose "curves" are the columns of a worksheet. The windows are read inside a `try`: a file whose windows are laid out otherwise still gives every value. It was checked on real projects that are not in the repository (the README says which); the check in `check_page.js` builds its own project, so it guards the reader's logic, not the format. Do not add a server route that parses uploaded files: these readers run where the file is.
+
 ### The host
 
-`asymille/web/host.py` is what Asymille asks of a server: its declarative base, the owner column, a session, who is signed in, how to raise an error. `build(host)` defines the one table (`asymille_projects`) on the host's base and returns the router. Every query on a project carries `owner_id` in the statement itself; a project of someone else is a 404. `standalone.py` is the smallest host (one user, SQLite, tables made with `create_all`); Ondelette's is `backend/app/asymille.py` in `Bigdft_ui`, with a migration.
+`asymille/web/host.py` is what Asymille asks of a server: its declarative base, the owner column, a session, who is signed in, how to raise an error. `build(host)` defines the two tables (`asymille_projects`, and `asymille_formats`: the formats of a figure a person kept under a name) on the host's base and returns the router. Every query on a project or a format carries `owner_id` in the statement itself; one of someone else is a 404. A table added in `tables.py` needs a migration in the host: `Bigdft_ui` has one per table. `standalone.py` is the smallest host (one user, SQLite, tables made with `create_all`); Ondelette's is `backend/app/asymille.py` in `Bigdft_ui`, with a migration.
 
 `page/shared/api.js` is a verbatim copy of Ondelette's `prototype/js/api.js`; `page/shared/account.js` is a stand-in used only by `serve.py`. In Ondelette the page loads Ondelette's own two files instead, and `Bigdft_ui/backend/update_from_asymille.sh` copies `asymille/`, `page/index.html`, `page/js/` and the example file there unchanged. So: nothing in `asymille/` or `page/js/` may import or assume Ondelette, and nothing there may assume the standalone server either.
 
@@ -92,7 +103,7 @@ Three things that were bugs once:
 
 ## Conventions
 
-- The README states counts and measured facts (55 functions and the instrument response, 18 operations, 28 presets, 147 tests, 64 check lines, the NIST tolerances). When a change moves one, update the sentence, and say what was measured and what was not in the same plain register.
+- The README states counts and measured facts (55 functions and the instrument response, 18 operations, 28 presets, 149 tests, 70 check lines, the NIST tolerances). When a change moves one, update the sentence, and say what was measured and what was not in the same plain register.
 - The journal presets in `asymille/journals.py` are written by hand from the guides for authors; `CHECKED` says they were not re-read from the publishers. Do not present them as verified unless they were.
 - A result is never invented: a fit that fails says why, an operation that cannot be done says why, and a warning is attached to a number that should not be trusted.
 - Commit subjects are one plain sentence saying what changed.

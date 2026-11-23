@@ -19,7 +19,7 @@
 const fs = require('fs'), path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 global.window = {};
-for (const f of ['util', 'expr', 'importer', 'plot', 'model']) require(path.join(ROOT, 'page/js', f + '.js'));
+for (const f of ['util', 'expr', 'importer', 'files', 'plot', 'model']) require(path.join(ROOT, 'page/js', f + '.js'));
 const A = window.ASY, M = A.model, P = A.plot;
 A.fnLabel = (c) => c.fn;
 let failed = 0;
@@ -308,6 +308,42 @@ ok('a curve of 50 000 points is drawn with ' + drawn + ': what a page can show',
   const text = JSON.stringify(M.serialize()); M.restore(JSON.parse(text));
   const old = JSON.parse(text); delete old.series; old.sheets.forEach((s) => s.columns.forEach((c) => { delete c.made; })); old.fits.forEach((f) => { delete f.xerr; delete f.response; });
   ok('a project with a series written and read back is the same; one saved before there were series, errors of x or responses opens', JSON.stringify(M.serialize()) === text && M.restore(old) && M.doc.series.length === 0 && M.doc.sheets[0].columns[0].made === null && M.doc.fits[0].xerr === null && M.doc.fits[0].response === null);
+  // ---- files that are not text: spreadsheets written by openpyxl and odfpy (tools/build_spreadsheets.py), and a project laid out as Origin lays one out
+  const F = A.files, bytesOf = (name) => new Uint8Array(fs.readFileSync(path.join(ROOT, 'tests/data', name)));
+  const sheetsText = (tables) => tables.map((t) => { const r = A.importer.read(t.text, t.name); return t.name + ': ' + r.columns.map((c) => c.title + '[' + c.unit + ']=' + JSON.stringify(c.values)).join(' '); }).join(' ; ');
+  const want = 'sample · Spectrum: Energy[eV]=[1.5,2.25,3,-4.5e-7] Counts[]=[10,null,1234567.891,0] Note[]=["start",null,"a b","end"] ; sample · Résistance: T[K]=[4.2,77,300] R[Ω]=[0.001,12.5,99.75]';
+  const fromExcel = sheetsText(await F.read(bytesOf('sample.xlsx'), 'sample.xlsx')), fromCalc = sheetsText(await F.read(bytesOf('sample.ods'), 'sample.ods'));
+  ok('a workbook of Excel and one of LibreOffice give the same sheets: names and units from the first line, an empty cell, a text among numbers, a sheet that starts at C3', fromExcel === want && fromCalc === want, fromExcel + ' /// ' + fromCalc);
+  const refusal = async (bytes, name) => { try { await F.read(bytes, name); return ''; } catch (e) { return e.message; } };
+  ok('what a file is, is read from its first bytes as much as from its name; what cannot be read says what to do', F.kind('a.xlsx') === 'xlsx' && F.kind('a.ODS') === 'ods' && F.kind('a.opj') === 'origin' && F.kind('notes.org', new TextEncoder().encode('* a text of Emacs')) === null
+    && F.kind('data.csv') === null && F.kind('renamed.txt', bytesOf('sample.xlsx')) === null && F.kind('x.xlsx', new TextEncoder().encode('a,b\n1,2')) === null && F.kind('old.dat', new Uint8Array([0x43, 0x50, 0x59, 0x41, 0x20])) === 'origin'
+    && /save it as \.xlsx/.test(await refusal(new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0, 0, 0, 0, 0, 0]), 'old.xls')) && /Save Project As/.test(await refusal(new TextEncoder().encode('CPYUA 4.3 #\n....'), 'new.opju'))
+    && /not a zip/.test(await refusal(new Uint8Array([0x50, 0x4b, 3, 4, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]), 'broken.xlsx')));
+  // a project of Origin: a line that names the format, then blocks (a size on four bytes, a line feed, the bytes, a line feed); datasets, then windows whose layers hold the columns as curves
+  const u32 = (v) => { const b = Buffer.alloc(4); b.writeUInt32LE(v); return b; }, nl = Buffer.from('\n'), zero = Buffer.concat([u32(0), nl]);
+  const blockOf = (buf) => Buffer.concat([u32(buf.length), nl, buf, buf.length ? nl : Buffer.alloc(0)]);
+  const MISSING = -1.23456789e-300;
+  const dataset = (name, type, width, values, last) => {
+    const hd = Buffer.alloc(0x7b), d = Buffer.alloc(values.length * width);
+    hd.writeUInt16LE(type, 0x16); hd.writeInt32LE(values.length, 0x19); hd.writeInt32LE(last == null ? values.length : last, 0x21); hd[0x3d] = width; hd.write(name, 0x58, 'latin1');
+    values.forEach((v, i) => { if (width === 8) d.writeDoubleLE(v, i * 8); else if (typeof v === 'number') d.writeDoubleLE(v, i * width + 2); else { d[i * width] = 1; d.write(v, i * width + 2, 'latin1'); } });
+    return Buffer.concat([blockOf(hd), blockOf(d), zero]);
+  };
+  const curve = (id, role, name, label) => { const hd = Buffer.alloc(0x60); hd.writeUInt16LE(id, 0x04); hd[0x11] = role; hd.write(name, 0x12, 'latin1'); return Buffer.concat([blockOf(hd), blockOf(Buffer.from(label ? label + '\0' : '', 'latin1'))]); };
+  const windowOf = (name, layers) => { const w = Buffer.alloc(0x40); w.write(name, 0x02, 'latin1'); return Buffer.concat([blockOf(w)].concat(layers.map((curves) => Buffer.concat([blockOf(Buffer.alloc(0x20, 1)), zero].concat(curves, [zero, zero, zero, zero, zero]))), [zero])); };
+  const opjHead = Buffer.alloc(0x27); opjHead.writeDoubleLE(9.5, 0x1b);
+  const project = Buffer.concat([Buffer.from('CPYA 4.3380 500#\n'), blockOf(opjHead), zero,
+    dataset('Book1_A', 0x6001, 8, [1, 2, 3, 4, 0, 0], 4), dataset('Book1_B', 0x6001, 8, [10, MISSING, 30, 40, MISSING, MISSING]), dataset('Book1_C', 0x6121, 10, [0.5, 'bad', 0.7, 0.9]),
+    dataset('Fit_Curve', 0x60b1, 8, [1e-310]), dataset('Book2_A', 0x6001, 8, [5, 6]), dataset('Book2_A@2', 0x6001, 8, [7, 8, 9]), dataset('Table1_A', 0x4121, 24, ['cell://Notes.Model', 'embedding:FitLine']), dataset('MBook1', 0x6001, 8, [1, 2, 3, 4]), zero,
+    windowOf('Book1', [[curve(1, 3, 'A', 'Energy\r\neV\r\nmeasured@${x}'), curve(2, 0, 'B', 'Counts'), curve(3, 2, 'C', '')]]), windowOf('Graph1', [[curve(2, 0, 'B', '')]]), windowOf('Book2', [[curve(5, 3, 'A', '')], [curve(6, 3, 'A', 'Time\r\ns')]]), zero,
+    Buffer.from('what follows is not read')]);
+  const sheetsOf = (bytes) => F.origin(new Uint8Array(bytes)).map((t) => t.name + ': ' + t.read.columns.map((c) => c.role + ' ' + c.title + '[' + c.unit + ']=' + JSON.stringify(c.values)).join(' ') + (t.said.length ? ' !' : '')).join(' ; ');
+  const cutShort = Buffer.concat([project.subarray(0, project.indexOf('Graph1') - 8)]);            // a file that ends in its windows: the values are there, the names are not
+  ok('a project of Origin: the values of each worksheet, empty cells, a text among numbers, the long name, the unit and the role of each column; functions, matrices and tables of Origin’s own are left',
+    sheetsOf(project) === 'Book1: x Energy[eV]=[1,2,3,4] y Counts[]=[10,null,30,40] yerr C[]=[0.5,"bad",0.7,0.9] ; Book2 · sheet 1: x A[]=[5,6] ; Book2 · sheet 2: x Time[s]=[7,8,9]'
+    && (await F.read(new Uint8Array(project), 'run.opj')).map((t) => t.name).join() === 'run · Book1,run · Book2 · sheet 1,run · Book2 · sheet 2', sheetsOf(project));
+  let ended = ''; try { F.origin(new Uint8Array(project.subarray(0, 300))); } catch (e) { ended = e.message; }
+  ok('a project that ends too early says so; one whose windows stop being readable still gives every value, the names it read, and says that some are missing', /ends before its data/.test(ended) && /^Book1: x Energy\[eV\]=\[1,2,3,4\] /.test(sheetsOf(cutShort)) && /Book2 · sheet 2: x A\[\]=\[7,8,9\] !$/.test(sheetsOf(cutShort)), ended + ' /// ' + sheetsOf(cutShort));
   console.log(failed ? '\n' + failed + ' FAILED' : '\nall ok');
   process.exit(failed ? 1 : 0);
 })();
