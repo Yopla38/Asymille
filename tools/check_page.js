@@ -132,6 +132,17 @@ ok('what is sent to be fitted: null where a cell is not a number', JSON.stringif
     && without.xerr === null && without.options.weights === 'none' && M.fitData(without).sigma_x === null);
   M.restore(JSON.parse(written));
 }
+{
+  const f = M.fit(fit.id), g = M.graph(graph.id), tall = g.figure.height, all = M.shownOf(f);
+  M.hideFit(f, 'components'); M.hideFit(f, 'band');
+  const curveOnly = M.shownOf(f), kinds = g.figure.panels[0].series.map((r) => r.part || 'data').join();
+  M.hideResiduals(f);
+  const none = M.shownOf(f), one = g.figure.panels.length === 1 && g.figure.layout.shareX === false && g.figure.layout.ratios.length === 0 && g.figure.height === Math.round(tall / 1.25);
+  M.showFit(f, g, { components: true, band: true }); M.showResiduals(f, g);
+  ok('the components, the band and the panel of residuals of a fit are taken off the graph and put back; the curve of the fit stays', all.components && all.band && all.residuals && !curveOnly.components && !curveOnly.band && curveOnly.residuals && kinds === 'data,total'
+    && !none.residuals && one && JSON.stringify(M.shownOf(f)) === JSON.stringify(all) && g.figure.panels.length === 2 && g.figure.height === Math.round(Math.round(tall / 1.25) * 1.25));
+  M.restore(JSON.parse(written));
+}
 M.removeSheet(sheet.id);
 ok('removing a sheet removes the series and the fits made of it', M.doc.fits.length === 0 && M.doc.graphs[0].figure.panels.every((p) => p.series.length === 0));
 M.undo();
@@ -171,6 +182,17 @@ ok('the grid of each axis has its colour and its line', gridded.items.some((it) 
 const coloured = styled((f, p) => { p.y2.color = '#d55e00'; p.y2.label = 'Right'; });
 ok('an axis in a colour: its side of the frame, its ticks, its numbers and its title', coloured.items.filter((it) => it.k === 'frame:p1').length === 4 && coloured.items.filter((it) => it.k === 'frame:p1' && it.stroke === '#d55e00').length === 1
   && coloured.items.filter((it) => it.t === 'text' && it.color === '#d55e00').length > 3 && styled(() => {}).items.filter((it) => it.k === 'frame:p1').length === 1);
+const labelled = (more) => styled((f, p) => { p.x.label = 'Energy (eV)'; p.y.label = 'Counts'; p.series[0].label = 'One'; Object.assign(p.x, more || {}); });
+const xOf = (l) => l.items.find((it) => it.k === 'xlabel:p1'), at0 = xOf(labelled()), own = labelled({ labelSize: 14, labelBold: true, labelItalic: true, labelDx: 20, labelDy: -6.5, decimals: 2 }), at1 = xOf(own);
+ok('the title of an axis has its own size, weight and slant, and sits where a hand moved it; the numbers have the decimals asked', at0.size === 9 && at0.weight === undefined && at1.size === 14 && at1.weight === 'bold' && at1.style === 'italic'
+  && Math.abs(at1.x - at0.x - 20) < 0.5 && own.hit.panels[0].box.h < labelled().hit.panels[0].box.h - 5 && own.items.filter((it) => it.k === 'xaxis:p1').every((it) => /^\d\.\d\d$/.test(it.runs[0].s))
+  && /font-style="italic"/.test(P.svg(own)) && !/font-style/.test(P.svg(labelled())) && P.sendable(own).items.some((it) => it.style === 'italic'));
+const legendOf = labelled().hit.panels[0].legend, arrows = (more) => styled((f, p) => { p.notes.push(Object.assign({ id: 'n1', type: 'arrow', x: 0.5, y: 5, x2: 2, y2: 20, coords: 'data', width: 1 }, more)); });
+const heads = (l) => l.items.filter((it) => it.t === 'poly' && it.k === 'note:n1'), wide = (l) => (P.svg(l, { keys: true }).match(/stroke-opacity="0" stroke-width="6"[^>]*data-k="(series|note):/g) || []).length;
+ok('the legend says where each of its names is; an arrow has one head or two, of the size asked; on screen a thin line is doubled by a wide unseen one', legendOf.rows.length === 1 && legendOf.rows[0].id === 'r1' && legendOf.rows[0].label === 'One'
+  && legendOf.rows[0].x > legendOf.x && legendOf.rows[0].y >= legendOf.y && heads(arrows({})).length === 1 && heads(arrows({ both: true })).length === 2
+  && Math.abs(Math.hypot(heads(arrows({ head: 12 }))[0].pts[2] - heads(arrows({ head: 12 }))[0].pts[0], heads(arrows({ head: 12 }))[0].pts[3] - heads(arrows({ head: 12 }))[0].pts[1]) - 12) < 0.02
+  && wide(arrows({})) === 2 && !/stroke-opacity="0"/.test(P.svg(arrows({}))));
 const titled = styled((f, p) => { p.title = 'Sample A'; p.titleSize = 14; p.titleAlign = 'left'; p.titleColor = '#0072b2'; p.titleBold = true; });
 const title = titled.items.find((it) => it.k === 'title:p1');
 ok('a title with its size, its colour, its place, in bold', title.size === 14 && title.anchor === 'start' && Math.abs(title.x - titled.hit.panels[0].box.x) < 0.02 && title.color === '#0072b2' && title.weight === 'bold' && titled.hit.panels[0].box.y > plainBox.y + 14);

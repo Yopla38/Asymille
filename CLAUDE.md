@@ -84,9 +84,15 @@ Everything that compares the model with data goes through two functions of `fitt
 
 `index.html` is written as page content, without doctype or `<html>` (the host wraps it and gives inline scripts a nonce): open it through a server, not from the file system. Scripts attach to `window.ASY` and load in dependency order. `app.touch()` commits and redraws everything but the inspector (a field was edited in it); `app.refresh()` redraws all. Controls of `ASY.ui` write to the project on `change` and call one of the two. `ASY.fill(el, …)` replaces children and skips nulls: `Element.replaceChildren` would write the text "null".
 
+Three things that were bugs once:
+
+- a panel is built again at each `refresh`, so a `<details>` must not be written with a fixed `open`: `ui.sec` and `ui.fold` remember what a person opened or closed (by tab and title), and `open` is only how it starts;
+- `figview.js` captures the pointer on `pointerdown`, so the `click` and `dblclick` that follow name the paper, not the text under the pointer: ask `document.elementFromPoint`. And the SVG must not be written again between the two clicks of a double-click (the browser then drops it): a click redraws the figure only when it changes what is selected, and a drag starts after two points of travel;
+- a curve or the line of a note is a hair wide: `svg(list, {keys: true})` doubles it with a wide unseen line that takes the pointer. It is for the screen: `sendable` and a `svg` without `keys` do not hold it.
+
 ## Conventions
 
-- The README states counts and measured facts (55 functions and the instrument response, 18 operations, 28 presets, 147 tests, 61 check lines, the NIST tolerances). When a change moves one, update the sentence, and say what was measured and what was not in the same plain register.
+- The README states counts and measured facts (55 functions and the instrument response, 18 operations, 28 presets, 147 tests, 64 check lines, the NIST tolerances). When a change moves one, update the sentence, and say what was measured and what was not in the same plain register.
 - The journal presets in `asymille/journals.py` are written by hand from the guides for authors; `CHECKED` says they were not re-read from the publishers. Do not present them as verified unless they were.
 - A result is never invented: a fit that fails says why, an operation that cannot be done says why, and a warning is attached to a number that should not be trusted.
 - Commit subjects are one plain sentence saying what changed.
