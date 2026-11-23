@@ -285,7 +285,18 @@ window.ASY = window.ASY || {};
               head(bx, by, Math.atan2(by - ay, bx - ax)); if (nt.both) head(ax, ay, Math.atan2(ay - by, ax - bx));
             }
           }
-        } else if (nt.type === 'text') { const [X, Y] = at(nt.x, nt.y); if (isFinite(X) && isFinite(Y)) text(X, Y, nt.text || '', nt.size || S.label, { anchor: nt.anchor || 'start', color: c, k, weight: nt.bold ? 'bold' : undefined }); }
+        } else if (nt.type === 'text') {
+          const [X, Y] = at(nt.x, nt.y);
+          if (isFinite(X) && isFinite(Y)) {
+            // a text of several lines: one under the other from the first, whose baseline is the place of the note; in a frame, on white
+            const size = nt.size || S.label, lines = String(nt.text == null ? '' : nt.text).split('\n'), lead = size * 1.32, anchor = nt.anchor || 'start';
+            if (nt.frame) {
+              const wide = Math.max(...lines.map((l) => textWidth(l, size))), pad = size * 0.5, left = (anchor === 'end' ? X - wide : anchor === 'middle' ? X - wide / 2 : X) - pad, top = Y - size * 0.92 - pad, bottom = Y + (lines.length - 1) * lead + size * 0.28 + pad;
+              items.push({ t: 'poly', pts: [left, top, left + wide + 2 * pad, top, left + wide + 2 * pad, bottom, left, bottom].map(R), fill: '#ffffff', stroke: c, width: fig.stroke.axis * 0.8, k });
+            }
+            lines.forEach((l, i) => text(X, Y + i * lead, l, size, { anchor, color: c, k, weight: nt.bold ? 'bold' : undefined }));
+          }
+        }
       });
 
       // the frame, the ticks, the numbers
@@ -379,7 +390,7 @@ window.ASY = window.ASY || {};
     opt = opt || {};
     const W = R(list.width * MM), H = R(list.height * MM), esc = ASY.escapeXml, clips = [], body = [];
     const clipOf = (c) => { if (!c) return ''; const id = c.join(','); let i = clips.indexOf(id); if (i < 0) { clips.push(id); i = clips.length - 1; } return ' clip-path="url(#' + (opt.prefix || 'c') + i + ')"'; };
-    const common = (it) => (it.opacity != null && it.opacity !== 1 ? ' opacity="' + it.opacity + '"' : '') + clipOf(it.clip) + (opt.keys && it.k ? ' data-k="' + esc(it.k) + '"' : '');
+    const common = (it) => (it.opacity != null && it.opacity !== 1 ? ' opacity="' + it.opacity + '"' : '') + clipOf(it.clip) + (opt.keys && it.k ? ' data-k="' + esc(it.k) + '"' : '') + (it.ghost ? ' pointer-events="none"' : '');          // a ghost is seen and lets the pointer through to what is under it
     const d = (p, close) => { let s = 'M' + p[0] + ' ' + p[1]; for (let i = 2; i < p.length; i += 2) s += 'L' + p[i] + ' ' + p[i + 1]; return s + (close ? 'Z' : ''); };
     for (const it of list.items) {
       if (it.t === 'line') {

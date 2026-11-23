@@ -63,6 +63,29 @@ def test_every_function_of_the_registry() -> None:
             assert set(guessed) <= set(f.names) | {"x0"} and all(math.isfinite(v) for v in guessed.values()), f.name
 
 
+def test_every_equation_can_be_written_on_one_line_of_a_figure() -> None:
+    """What the page draws on a figure: characters, one level of index or exponent, and the Greek letters it knows. Nothing of TeX is left."""
+    import re
+    from pathlib import Path
+    script = (Path(__file__).resolve().parent.parent / "page" / "js" / "plot.js").read_text(encoding="utf-8")
+    greek = set(re.findall(r"(\w+): '", script[script.index("const GREEK = {"):script.index("// widths of Helvetica")]))
+    assert {"sigma", "tau", "pi", "Theta"} <= greek
+    for f in functions.REGISTRY.values():
+        line = f.plain
+        assert line and "\n" not in line and "begin" not in line and "frac" not in line, f.name
+        assert set(re.findall(r"\\([A-Za-z]+)", line)) <= greek, (f.name, line)                    # every \name is a letter the page knows
+        assert not re.search(r"\\[^A-Za-z]", line), (f.name, line)
+        for opened, closed in ("()", "[]", "{}"):
+            assert line.count(opened) == line.count(closed), (f.name, line)
+        for inner in re.findall(r"\{([^{}]*)\}", line):                                         # a brace only holds an index or an exponent, without another inside
+            assert not re.search(r"[\^_]", inner), (f.name, line)
+        assert re.sub(r"[\^_]\{[^{}]*\}", "", line).count("{") == 0, (f.name, line)
+    assert functions.get("gaussian").plain == r"y = A/(\sigma√(2\pi)) · exp(−(x−x_c)^2 / 2\sigma^2)"
+    assert functions.get("lorentzian").plain == r"y = A/\pi · \sigma/((x−x_c)^2 + \sigma^2)" and functions.get("exp_decay").plain == r"y = y_0 + A exp(−x/\tau)"
+    assert functions.one_line(r"y = \frac{1}{2J} \coth\!\left(\frac{x}{s}\right)^{a_{1}}") == "y = 1/(2J) · coth(x/s)^(a_{1})"          # an index inside an exponent goes on the line
+    assert all(f["plain"] for f in functions.described())
+
+
 def test_functions_that_hold_a_convolution_or_a_limit() -> None:
     """Checked against the integral they stand for, taken numerically, and against the forms they must tend to."""
     from scipy import integrate, special

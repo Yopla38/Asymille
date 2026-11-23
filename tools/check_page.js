@@ -138,6 +138,22 @@ ok('what is sent to be fitted: null where a cell is not a number', JSON.stringif
   const curveOnly = M.shownOf(f), kinds = g.figure.panels[0].series.map((r) => r.part || 'data').join();
   M.hideResiduals(f);
   const none = M.shownOf(f), one = g.figure.panels.length === 1 && g.figure.layout.shareX === false && g.figure.layout.ratios.length === 0 && g.figure.height === Math.round(tall / 1.25);
+  // one component alone, the curve of the fit hidden and brought back, and what the fit writes on its graph
+  const ids = f.model.components.map((c) => c.id), plainOf = (c) => 'y = ' + c.fn.toUpperCase() + '(x; \\sigma)';
+  M.showFit(f, g, { components: [ids[1]] }); const oneOnly = M.shownOf(f).parts.join();
+  M.showFit(f, g, { components: true }); M.hideFit(f, 'components', ids[0]); const allButFirst = M.shownOf(f).parts.join();
+  M.drawTotal(f, false); const hidden = M.shownOf(f).total; M.showFit(f, g); const stillHidden = M.shownOf(f).total; M.drawTotal(f, true);
+  M.hideFit(f, 'components');
+  const wrote = M.writeFit(f, g, { equation: true }, plainOf), eq = wrote.text.split('\n');
+  M.writeFit(f, g, { equation: true, params: true, stats: true }, plainOf); const full = wrote.text.split('\n'), same = M.fitNote(f).note === wrote && g.figure.panels[0].notes.filter((n) => n.fit === f.id).length === 1;
+  const laid = P.layout(g.figure, M.seriesData).items.filter((it) => it.k === 'note:' + wrote.id), ys = laid.filter((it) => it.t === 'text').map((it) => it.y);
+  wrote.frame = true; const framed = P.layout(g.figure, M.seriesData).items.filter((it) => it.k === 'note:' + wrote.id && it.t === 'poly').length;
+  M.writeFit(f, g, {}, plainOf);
+  ok('the components are drawn one by one; the curve of the fit stays hidden when asked; a fit writes its equation and what it found on its graph, in lines, and takes them away',
+    oneOnly === ids[1] && allButFirst === ids.slice(1).join() && hidden === false && stillHidden === false && M.shownOf(f).total === true
+    && eq.length === ids.length + 1 && eq[0] === 'y = ' + ids.map((k) => 'y_{' + k + '}').join(' + ') && eq[1].startsWith('y_{' + ids[0] + '} = ') && full.length > eq.length && /^reduced \\chi\^2 = /.test(full[full.length - 2]) && /^R\^2 = /.test(full[full.length - 1])
+    && same && laid.filter((it) => it.t === 'text').length === full.length && ys.every((y, i) => i === 0 || y > ys[i - 1]) && framed === 1 && M.fitNote(f) === null
+    && M.shownExpression('a*exp(-x/tau1) + x^2 - my_par*x_0') === 'a·exp(−x/\\tau_{1}) + x^{2} − my\\_par·x_0', [oneOnly, allButFirst, hidden, stillHidden, eq.length, full.length, laid.length, framed].join(' / '));
   M.showFit(f, g, { components: true, band: true }); M.showResiduals(f, g);
   ok('the components, the band and the panel of residuals of a fit are taken off the graph and put back; the curve of the fit stays', all.components && all.band && all.residuals && !curveOnly.components && !curveOnly.band && curveOnly.residuals && kinds === 'data,total'
     && !none.residuals && one && JSON.stringify(M.shownOf(f)) === JSON.stringify(all) && g.figure.panels.length === 2 && g.figure.height === Math.round(Math.round(tall / 1.25) * 1.25));
