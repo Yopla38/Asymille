@@ -209,6 +209,12 @@ ok('the legend says where each of its names is; an arrow has one head or two, of
   && legendOf.rows[0].x > legendOf.x && legendOf.rows[0].y >= legendOf.y && heads(arrows({})).length === 1 && heads(arrows({ both: true })).length === 2
   && Math.abs(Math.hypot(heads(arrows({ head: 12 }))[0].pts[2] - heads(arrows({ head: 12 }))[0].pts[0], heads(arrows({ head: 12 }))[0].pts[3] - heads(arrows({ head: 12 }))[0].pts[1]) - 12) < 0.02
   && wide(arrows({})) === 2 && !/stroke-opacity="0"/.test(P.svg(arrows({}))));
+const mine = Object.assign(P.defaults(), { width: 86, height: 60, font: 'Helvetica', journal: 'aps-1', frame: 'open' }); mine.size.label = 7; mine.stroke.line = 0.8; mine.tick.dir = 'out'; mine.panels[0].x.label = 'Only here';
+const taken = P.applyFormat(P.defaults(), JSON.parse(JSON.stringify(P.formatOf(mine))));
+const wary = P.applyFormat(P.defaults(), { width: 'wide', height: -5, font: 12, size: { label: '9', tick: 6.5, evil: 1 }, stroke: 'thick', panels: [], layout: { cols: 9 }, journal: null, __proto__: { frame: 'open' } });
+ok('a format kept from a figure gives another its size, its type, its lines and its ticks, and nothing else; what is not a format is not taken', JSON.stringify(P.formatOf(taken)) === JSON.stringify(P.formatOf(mine)) && taken.panels[0].x.label === ''
+  && Object.keys(P.formatOf(mine)).join() === P.FORMAT.join() && wary.width === 120 && wary.height === 85 && wary.font === 'Arial' && wary.size.label === 9 && wary.size.tick === 6.5 && wary.size.evil === undefined && wary.stroke.line === 1.2
+  && wary.panels.length === 1 && wary.layout.cols === 1 && wary.journal === null);
 const titled = styled((f, p) => { p.title = 'Sample A'; p.titleSize = 14; p.titleAlign = 'left'; p.titleColor = '#0072b2'; p.titleBold = true; });
 const title = titled.items.find((it) => it.k === 'title:p1');
 ok('a title with its size, its colour, its place, in bold', title.size === 14 && title.anchor === 'start' && Math.abs(title.x - titled.hit.panels[0].box.x) < 0.02 && title.color === '#0072b2' && title.weight === 'bold' && titled.hit.panels[0].box.y > plainBox.y + 14);

@@ -174,10 +174,36 @@ def test_a_project_of_someone_else_does_not_exist() -> None:
     assert bob.post(f"/projects/{mine}/duplicate").status_code == 404
     assert bob.send("DELETE", f"/projects/{mine}").status_code == 404
     assert alice.get(f"/projects/{mine}").json()["revision"] == 1               # untouched
-    with app.state.make() as session:                                         # an account that leaves takes its projects with it
+    kept = alice.send("PUT", "/formats", {"name": "Thesis", "format": FORMAT}).json()["id"]            # the same holds for a format a person kept
+    assert bob.get("/formats").json() == [] and bob.send("DELETE", f"/formats/{kept}").status_code == 404
+    assert bob.send("PUT", "/formats", {"name": "Thesis", "format": {"width": 60}}).status_code == 200            # the same name, each their own
+    assert alice.get("/formats").json()[0]["format"] == FORMAT
+    with app.state.make() as session:                                         # an account that leaves takes its projects and its formats with it
         session.delete(session.get(app.state.User, 1))
         session.commit()
-    assert alice.get("/projects").json() == []
+    assert alice.get("/projects").json() == [] and alice.get("/formats").json() == [] and len(bob.get("/formats").json()) == 1
+
+
+FORMAT = {"width": 86, "height": 64, "font": "Helvetica", "background": "#ffffff", "journal": None, "palette": "okabe", "size": {"label": 8, "tick": 7, "legend": 7, "title": 8, "tag": 9},
+          "stroke": {"axis": 0.5, "line": 1, "grid": 0.35, "error": 0.5}, "tick": {"dir": "in", "len": 3, "mirror": True}, "frame": "box"}
+
+
+def test_a_format_is_kept_under_a_name_and_replaced_by_one_of_the_same_name() -> None:
+    page = Page(create_app(":memory:", limits=Limits(max_formats=2)))
+    assert page.get("/formats").json() == [] and page.get("/catalogue").json()["limits"]["formats"] == 2
+    first = page.send("PUT", "/formats", {"name": "  PRB single column ", "format": FORMAT})
+    assert first.status_code == 200 and first.json()["name"] == "PRB single column" and first.json()["format"] == FORMAT          # kept as it was sent: a null stays a null
+    again = page.send("PUT", "/formats", {"name": "PRB single column", "format": dict(FORMAT, width=90)})
+    assert again.json()["id"] == first.json()["id"] and again.json()["format"]["width"] == 90
+    assert page.send("PUT", "/formats", {"name": "A slide", "format": {"width": 250}}).status_code == 200
+    assert [f["name"] for f in page.get("/formats").json()] == ["A slide", "PRB single column"]
+    full = page.send("PUT", "/formats", {"name": "One more", "format": {}})
+    assert full.status_code == 409 and full.json()["error"]["code"] == "too_many_formats"
+    assert page.send("DELETE", f"/formats/{first.json()['id']}").status_code == 204 and page.send("DELETE", f"/formats/{first.json()['id']}").status_code == 404
+    assert page.send("PUT", "/formats", {"name": "One more", "format": {}}).status_code == 200
+    for bad in ({"name": "", "format": {}}, {"name": "x" * 61, "format": {}}, {"name": "x", "format": {"blob": "y" * 9000}}, {"name": "x", "format": {}, "owner_id": 2}, {"name": "x"}):
+        assert page.send("PUT", "/formats", bad).status_code == 422, bad
+    assert Page(create_app(":memory:")).http.put("/api/asymille/formats", json={"name": "x", "format": {}}).status_code == 403          # not the page's own request
 
 
 # ── computing ────────────────────────────────────────────────────────────────

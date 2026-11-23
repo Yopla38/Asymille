@@ -43,6 +43,20 @@ window.ASY = window.ASY || {};
     size: { label: 9, tick: 8, legend: 8, title: 9, tag: 10 }, stroke: { axis: 0.6, line: 1.2, grid: 0.4, error: 0.6 },
     tick: { dir: 'in', len: 3.5, mirror: true }, frame: 'box', layout: { cols: 1, ratios: [], gap: 2, shareX: false }, tags: 'none', panels: [panel('p1')],
   });
+  /* The format of a figure: what a journal sets, and what a person keeps under a name to give to their other figures. Not its data, its axes or its notes. */
+  const FORMAT = ['width', 'height', 'font', 'background', 'journal', 'palette', 'size', 'stroke', 'tick', 'frame'];
+  const formatOf = (fig) => { const out = {}; FORMAT.forEach((k) => { out[k] = fig[k] === undefined ? null : JSON.parse(JSON.stringify(fig[k])); }); return out; };
+  /* A figure takes of a format the things it knows, each of the kind it must be: a format read from elsewhere puts nothing else in a figure. */
+  function applyFormat(fig, format) {
+    const d = defaults();
+    FORMAT.forEach((k) => {
+      const v = format ? format[k] : undefined;
+      if (v == null) { if (k === 'journal' && v === null) fig.journal = null; return; }
+      if (d[k] !== null && typeof d[k] === 'object') { if (typeof v === 'object') { fig[k] = fig[k] || {}; Object.keys(d[k]).forEach((q) => { if (typeof v[q] === typeof d[k][q] && (typeof v[q] !== 'number' || isFinite(v[q]))) fig[k][q] = v[q]; }); } }
+      else if (k === 'journal' ? typeof v === 'string' : typeof v === typeof d[k] && (typeof v !== 'number' || (isFinite(v) && v > 0))) fig[k] = v;
+    });
+    return fig;
+  }
   const series = (more) => Object.assign({ kind: 'data', axis: 'y', label: '', type: 'scatter', color: '#0072b2', width: null, dash: 'solid', marker: 'circle', size: 3.5, open: false,
     opacity: 1, show: true, legend: true }, more || {});
 
@@ -427,5 +441,5 @@ window.ASY = window.ASY || {};
   const sendable = (list) => ({ width: list.width, height: list.height, background: list.background, font: list.font,
     items: list.items.map((it) => { const o = {}; for (const key in it) if (key !== 'k' && it[key] !== undefined) o[key] = it[key]; return o; }) });
 
-  ASY.plot = { MM, PALETTES, MARKERS, DASHES, TYPES, GREEK, defaults, panel, axis, series, runs, plain, literal, textWidth, range, ticks, scale, layout, svg, sendable, FONTS };
+  ASY.plot = { MM, PALETTES, MARKERS, DASHES, TYPES, GREEK, FORMAT, formatOf, applyFormat, defaults, panel, axis, series, runs, plain, literal, textWidth, range, ticks, scale, layout, svg, sendable, FONTS };
 })(window.ASY);
