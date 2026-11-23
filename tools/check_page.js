@@ -342,6 +342,40 @@ ok('a curve of 50 000 points is drawn with ' + drawn + ': what a page can show',
   ok('a project of Origin: the values of each worksheet, empty cells, a text among numbers, the long name, the unit and the role of each column; functions, matrices and tables of Origin’s own are left',
     sheetsOf(project) === 'Book1: x Energy[eV]=[1,2,3,4] y Counts[]=[10,null,30,40] yerr C[]=[0.5,"bad",0.7,0.9] ; Book2 · sheet 1: x A[]=[5,6] ; Book2 · sheet 2: x Time[s]=[7,8,9]'
     && (await F.read(new Uint8Array(project), 'run.opj')).map((t) => t.name).join() === 'run · Book1,run · Book2 · sheet 1,run · Book2 · sheet 2', sheetsOf(project));
+  // its graphs: a window whose layers hold axes, texts and curves that name datasets by their number
+  const layerOf = (x, y, rect) => { const l = Buffer.alloc(0x110); [x, y].forEach((ax, k) => { const at = k ? 0x3a : 0x0f; l.writeDoubleLE(ax[0], at); l.writeDoubleLE(ax[1], at + 8); l.writeDoubleLE(ax[2], at + 16); l[k ? 0x63 : 0x38] = ax[3]; }); rect.forEach((v, k) => l.writeInt16LE(v, 0x71 + 2 * k)); return blockOf(l); };
+  const noteOf = (name, kind, attach, rect, d1, text, colour) => { const hd = Buffer.alloc(0x70); hd[0x02] = kind; rect.forEach((v, k) => hd.writeInt16LE(v, 0x03 + 2 * k)); hd[0x28] = attach; Buffer.from(colour || [0, 0, 0, 0]).copy(hd, 0x33); hd.write(name, 0x46, 'latin1');
+    return Buffer.concat([blockOf(hd), blockOf(d1), blockOf(Buffer.from(text ? text + '\0' : '', 'latin1')), zero]); };
+  const drawnAs = (yId, xId, type, more) => { const hd = Buffer.alloc(0x170); hd.writeUInt16LE(yId, 0x04); hd.writeUInt16LE(xId, 0x23); hd[0x4c] = type; more = more || {}; hd[0x11] = more.connect || 1; hd[0x12] = more.style || 0; hd.writeUInt16LE((more.width || 0.5) * 500, 0x15);
+    hd[0x17] = more.shape || 2; hd[0x18] = more.interior || 0; hd.writeUInt16LE((more.size || 9) * 500, 0x19); Buffer.from(more.line || [0, 0, 0, 0]).copy(hd, 0x16a); Buffer.from(more.symbol || [0xf7, 0, 0, 0xff]).copy(hd, 0x132); return Buffer.concat([blockOf(hd), zero]); };
+  const arrowTo = Buffer.alloc(0x78); arrowTo[0] = 2; arrowTo.writeDoubleLE(1, 0x20); arrowTo.writeDoubleLE(3, 0x28); arrowTo.writeDoubleLE(20, 0x40); arrowTo.writeDoubleLE(40, 0x48); arrowTo[0x6c] = 1;
+  const plain66 = Buffer.alloc(0x66), box = [100, 100, 1100, 800];
+  const graphWindow = (name, layers) => { const w = Buffer.alloc(0x60); w.write(name, 0x02, 'latin1'); w.write('LINE', 0x45, 'latin1'); return Buffer.concat([blockOf(w)].concat(layers.map((l) => Buffer.concat([l.head].concat(l.notes, [zero], l.curves, [zero, zero, zero, zero, zero]))), [zero])); };
+  const withGraph = Buffer.concat([project.subarray(0, project.indexOf('what follows') - 5),
+    graphWindow('Graph2', [
+      { head: layerOf([0, 5, 1, 0], [1, 1000, 0, 1], box), notes: [noteOf('XB', 0, 0x22, [500, 820, 700, 860], plain66, '%(?X)'), noteOf('YL', 0, 0x22, [20, 300, 60, 600], plain66, '\\b(Counts) (s\\+(-1)), \\g(m) and \\f:Times New Roman(\\(x03C7))_raw'),
+        noteOf('Legend', 0, 0x20, [850, 120, 1050, 220], plain66, '\\l(1) %(1)\r\n\\l(2) the fit'), noteOf('Text', 0, 0, [200, 150, 400, 220], plain66, 'T = 4 K\r\n\\i(sample) A_1', [1, 0, 0, 0]),
+        noteOf('Line1', 0x22, 2, [0, 0, 10, 10], arrowTo, '', [0x10, 0x20, 0x30, 1]), noteOf('__LayerInfoStorage', 35, 0, [0, 0, 0, 0], Buffer.alloc(0x40), '@${opaque}')],
+        curves: [drawnAs(2, 1, 201, { shape: 1, symbol: [1, 0, 0, 0] }), drawnAs(3, 1, 231), drawnAs(2, 1, 200, { style: 1, width: 1.5, line: [0x10, 0x20, 0x30, 1] }), drawnAs(2, 1, 226)] },
+      { head: layerOf([0, 5, 1, 0], [9, 2, 1, 0], box), notes: [noteOf('YR', 0, 0x22, [1120, 300, 1160, 600], plain66, 'Other')], curves: [drawnAs(5, 0, 202, { connect: 11 })] }]),
+    graphWindow('Graph3', [{ head: layerOf([0, 1, 1, 0], [0, 1, 1, 0], box), notes: [], curves: [drawnAs(1, 0, 219)] }]), zero]);
+  const read2 = F.origin(new Uint8Array(withGraph)), spec = read2.graphs[0], p0 = spec ? spec.panels[0] : null;
+  ok('a graph of an Origin project: a panel for a layer, a layer laid over it as its right axis; ranges and scales; the titles in the markup of this page; a legend, a text, an arrow; an error column joined to its curve',
+    read2.graphs.length === 1 && spec.name === 'Graph2' && spec.panels.length === 1 && JSON.stringify(p0.x) === '{"label":"Energy (eV)","scale":"linear","min":0,"max":5,"step":1,"reverse":false}'
+    && JSON.stringify(p0.y) === '{"label":"Counts (s^{-1}), \\\\mu{} and χ\\\\_raw","scale":"log","min":1,"max":1000,"step":null,"reverse":false}' && JSON.stringify(p0.y2) === '{"label":"Other","scale":"linear","min":2,"max":9,"step":1,"reverse":true}'
+    && p0.curves.map((c) => [c.table, c.x, c.y, c.yerr, c.axis, c.type, c.color, c.dash, c.marker, c.width, c.label].join(',')).join(' ; ') === 'Book1@1,0,1,2,y,scatter,#ff0000,solid,square,0.5, ; Book1@1,0,1,,y,line,#102030,dash,circle,1.5,the fit ; Book2@1,,0,,y2,both,#000000,solid,circle,0.5,'
+    && JSON.stringify(p0.legend) === '{"x":0.75,"y":0.0286}' && p0.notes.map((n) => n.type + ':' + (n.text || [n.coords, n.x, n.y, n.x2, n.y2, n.color].join())).join(' ; ') === 'text:T = 4 K\nsample A\\_1 ; arrow:data,1,20,3,40,#102030' && p0.notes[0].color === '#ff0000'
+    && /a contour plot/.test(spec.said.join()) && /a histogram/.test(read2.left.join()) && read2.length === 3,
+    spec ? JSON.stringify(p0.x) + ' ' + JSON.stringify(p0.y) + ' ' + JSON.stringify(p0.y2) + ' // ' + p0.curves.map((c) => [c.table, c.x, c.y, c.yerr, c.axis, c.type, c.color, c.dash, c.marker, c.width, c.label].join(',')).join(' ; ') + ' // ' + JSON.stringify(p0.legend) + ' // ' + JSON.stringify(p0.notes) + ' // ' + spec.said.join() + ' // ' + read2.left.join() : 'no graph');
+  M.blank('From Origin');
+  const sheetsMade = {}; read2.forEach((t, k) => { if (k !== 1) sheetsMade[t.key] = M.sheetFrom(t.name, t.read.columns, ''); });          // one of its sheets is left out: its curve is too
+  const gMade = M.graphFrom(spec, (key) => sheetsMade[key] || null), pm = gMade.figure.panels[0], book1 = sheetsMade['Book1@1'];
+  ok('made here: the curves name the columns of the sheets that were imported, a curve of a sheet that was left out is left; the axes, the legend in the nearest corner, the texts and the arrows are those of the graph',
+    gMade.name === 'Graph2' && pm.series.length === 2 && pm.series[0].sheet === book1.id && pm.series[0].x === book1.columns[0].id && pm.series[0].y === book1.columns[1].id && pm.series[0].yerr === book1.columns[2].id && pm.series[0].type === 'scatter'
+    && pm.series[1].label === 'the fit' && pm.series[1].dash === 'dash' && pm.series[1].width === 1.5 && pm.y.scale === 'log' && pm.y.min === 1 && pm.x.label === 'Energy (eV)' && pm.y2 && pm.y2.reverse === true && pm.legend.pos === 'ne'
+    && pm.notes.length === 2 && pm.notes[0].type === 'text' && pm.notes[1].type === 'arrow' && pm.notes[1].coords === 'data' && gMade.figure.height === Math.round(120 * 0.7)
+    && P.layout(gMade.figure, M.seriesData).items.some((it) => it.t === 'text' && it.k === 'ylabel:' + pm.id && it.runs.map((r) => r.s).join('|') === 'Counts (s|−1|), μ and χ_raw')
+    && M.graphFrom({ name: 'Nothing', panels: [{ x: {}, y: {}, curves: [{ table: 'gone', x: 0, y: 1 }] }] }, () => null) === null && M.doc.graphs.length === 1);
   let ended = ''; try { F.origin(new Uint8Array(project.subarray(0, 300))); } catch (e) { ended = e.message; }
   ok('a project that ends too early says so; one whose windows stop being readable still gives every value, the names it read, and says that some are missing', /ends before its data/.test(ended) && /^Book1: x Energy\[eV\]=\[1,2,3,4\] /.test(sheetsOf(cutShort)) && /Book2 · sheet 2: x A\[\]=\[7,8,9\] !$/.test(sheetsOf(cutShort)), ended + ' /// ' + sheetsOf(cutShort));
   console.log(failed ? '\n' + failed + ' FAILED' : '\nall ok');
