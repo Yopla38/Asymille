@@ -376,6 +376,43 @@ ok('a curve of 50 000 points is drawn with ' + drawn + ': what a page can show',
     && pm.notes.length === 2 && pm.notes[0].type === 'text' && pm.notes[1].type === 'arrow' && pm.notes[1].coords === 'data' && gMade.figure.height === Math.round(120 * 0.7)
     && P.layout(gMade.figure, M.seriesData).items.some((it) => it.t === 'text' && it.k === 'ylabel:' + pm.id && it.runs.map((r) => r.s).join('|') === 'Counts (s|−1|), μ and χ_raw')
     && M.graphFrom({ name: 'Nothing', panels: [{ x: {}, y: {}, curves: [{ table: 'gone', x: 0, y: 1 }] }] }, () => null) === null && M.doc.graphs.length === 1);
+  // functions drawn on a graph ("Add Function Graph"), and texts with their colour, their size, their turn and the place Origin keeps for them
+  const functionOf = (name, formula, points, begin, step) => { const hd = Buffer.alloc(0x8c); hd.writeUInt16LE(0x6081, 0x16); hd.writeInt32LE(points, 0x21); hd.writeDoubleLE(begin, 0x25); hd.writeDoubleLE(step, 0x2d); hd[0x3d] = 100; hd.write(name, 0x58, 'latin1');
+    return Buffer.concat([blockOf(hd), blockOf(Buffer.from(formula + '\0', 'latin1')), zero]); };
+  const textAt = (name, px, py, text, more) => { more = more || {}; const hd = Buffer.alloc(0x70), d1 = Buffer.alloc(62); hd.writeDoubleLE(px, 0x13); hd.writeDoubleLE(py, 0x1b); hd[0x28] = more.attach || 0; hd.write(name, 0x46, 'latin1');
+    [more.left || 300, more.top || 300, 400, 340].forEach((v, k) => hd.writeInt16LE(v, 0x03 + 2 * k)); d1.writeInt16LE((more.turn || 0) * 10, 0x02); d1[4] = more.font || 22; d1[8] = more.centred ? 0x26 : 0;
+    return Buffer.concat([blockOf(hd), blockOf(d1), blockOf(Buffer.from(text + '\0', 'latin1')), zero]); };
+  const pageWindow = (name, layers) => { const w = Buffer.alloc(0x60); w.write(name, 0x02, 'latin1'); w.writeUInt16LE(1300, 0x23); w.writeUInt16LE(1000, 0x25); w.write('LINE', 0x45, 'latin1'); return Buffer.concat([blockOf(w)].concat(layers.map((l) => Buffer.concat([l.head].concat(l.notes, [zero], l.curves, [zero, zero, zero, zero, zero]))), [zero])); };
+  const drawnProject = Buffer.concat([Buffer.from('CPYA 4.2878 724#\n'), blockOf(opjHead), zero,
+    dataset('Run_A', 0x6001, 8, [0, 1, 2, 3]), dataset('Run_B', 0x6001, 8, [1, 3, 5, 8]), functionOf('F1', '2*x+1', 5, 0, 1), functionOf('F2', '6.5', 5, 0, 1), functionOf('F3', 'Exp(-x/7.5)', 3, 10, 5), functionOf('F4', 'besselj(x)', 5, 0, 1), functionOf('F5', '9', 5, 0, 1), zero,
+    windowOf('Run', [[curve(1, 3, 'A', ''), curve(2, 0, 'B', '')]]),
+    pageWindow('Graph1', [{ head: layerOf([0, 4, 1, 0], [0, 10, 2, 0], box), notes: [textAt('XB', 2, 0, 'Time (min)', { attach: 0x22, centred: true }), textAt('Text1', 0.5, 0.25, '\\p69(400°C)\r\n\\p69(under)', { centred: true }),
+      textAt('Text2', 0.1, 0.4, '\\p69(300°C)', { turn: 90 }), textAt('Text3', 0.2, 0.1, '\\g(\\p144(\\c17(t =)))\\c17( 7.5 min)', { font: 18 }), textAt('Text4', 0.3, 0.2, '\\c16809985(late)'), textAt('Text5', 0.8, -0.44, 'an older copy', { top: -400 }),
+      textAt('Text6', 3, 7, 'on the scales', { attach: 2 })],
+      curves: [drawnAs(2, 1, 201), drawnAs(3, 0, 200, { line: [1, 0, 0, 0] }), drawnAs(4, 0, 200, { style: 2, line: [19, 0, 0, 0] }), drawnAs(5, 0, 200), drawnAs(6, 0, 200)] }]), zero]);
+  const read3 = F.origin(new Uint8Array(drawnProject)), fnTable = read3.find((t) => t.key === 'functions'), p3 = read3.graphs[0].panels[0];
+  ok('the functions drawn on a graph of Origin become a sheet: a column of x for each grid, and each function with its formula and its values; what this page cannot compute is left empty and said; a function no graph draws is left',
+    read3.length === 2 && fnTable.read.columns.map((c) => c.title + (c.fx ? '=' + c.fx + '@' + c.on : '') + ':' + JSON.stringify(c.values)).join(' ; ') === 'x:[0,1,2,3,4] ; F1=2*x+1@0:[1,3,5,7,9] ; F2=6.5@0:[6.5,6.5,6.5,6.5,6.5] ; F4:[null,null,null,null,null] ; x:[10,15,20] ; F3=exp(-x/7.5)@4:' + JSON.stringify([10, 15, 20].map((x) => Math.exp(-x / 7.5)))
+    && /F4 is not one this page computes/.test(read3[0].said.join()) && p3.curves.map((c) => [c.table, c.x, c.y, c.type, c.color, c.dash, c.label].join(',')).join(' ; ') === 'Run@1,0,1,scatter,#000000,solid, ; functions,,1,line,#ff0000,solid,2*x+1 ; functions,,2,line,#808080,dot,6.5 ; functions,,5,line,#000000,solid,Exp(-x/7.5) ; functions,,3,line,#000000,solid,besselj(x)',
+    fnTable ? fnTable.read.columns.map((c) => c.title + (c.fx ? '=' + c.fx + '@' + c.on : '') + ':' + JSON.stringify(c.values)).join(' ; ') + ' // ' + p3.curves.map((c) => [c.table, c.x, c.y, c.type, c.color, c.dash, c.label].join(',')).join(' ; ') + ' // ' + read3[0].said.join() : 'no table of functions');
+  ok('a text of Origin stands where the file says: by its top left corner, or by its centre when it is centred, on the frame or on the scales; with its colour, its size beside that of the titles, its turn; one left outside the page is not taken',
+    p3.x.label === 'Time (min)' && p3.notes.map((n) => [n.text.replace(/\n/g, '/'), n.coords, n.x, n.y, n.anchor, n.valign, n.color, n.scale, n.rotate].join(',')).join(' ; ')
+      === '400°C/under,axes,0.5,0.75,middle,middle,#000000,0.69,0 ; 300°C,axes,0.1,0.6,start,top,#000000,0.69,90 ; \\tau{} = 7.5 min,axes,0.2,0.9,start,top,#ff0080,0.82,0 ; late,axes,0.3,0.8,start,top,#018000,1,0 ; on the scales,data,3,7,start,top,#000000,1,0'
+    && F.originScale('\\p144(\\c17(\\p83(6.56)))') === 1.44 * 0.83 && F.originColour('\\c2(a-CdS)') === '#ff0000' && F.originColour('plain') === null,
+    p3.notes.map((n) => [n.text.replace(/\n/g, '/'), n.coords, n.x, n.y, n.anchor, n.valign, n.color, n.scale, n.rotate].join(',')).join(' ; '));
+  M.blank('Functions');
+  const made3 = {}; read3.forEach((t) => { made3[t.key] = M.sheetFrom(t.name, t.read.columns, ''); });
+  const fs3 = made3.functions, g3 = M.graphFrom(read3.graphs[0], (key) => made3[key] || null), pn = g3.figure.panels[0];
+  const laid3 = P.layout(g3.figure, M.seriesData), texts3 = (n) => laid3.items.filter((it) => it.t === 'text' && it.k === 'note:' + n.id);
+  fs3.columns[0].values[1] = 10; M.changed(fs3);
+  ok('made here: a function is a column that keeps its formula on its column of x and follows it; its curve is drawn on them; a centred text is laid about its centre, a turned one is turned, one outside the frame has its room on the page',
+    fs3.columns.map((c) => c.name + (c.formula ? '=' + c.formula : '')).join() === 'A,B=2*A+1,C=6.5,D,E,F=exp(-E/7.5)' && fs3.columns[1].values.join() === '1,21,5,7,9' && pn.series.length === 5 && pn.series[1].x === fs3.columns[0].id && pn.series[1].y === fs3.columns[1].id
+    && pn.series[3].x === fs3.columns[4].id && pn.series[1].label === '2*x+1' && pn.notes.length === 5 && pn.notes[0].size === Number((9 * 0.69).toFixed(1)) && texts3(pn.notes[0]).length === 2 && texts3(pn.notes[0]).every((it) => it.anchor === 'middle')
+    && Math.abs((texts3(pn.notes[0])[0].y + texts3(pn.notes[0])[1].y) / 2 - pn.notes[0].size * 0.35 - (laid3.hit.panels[0].box.y + 0.25 * laid3.hit.panels[0].box.h)) < 0.02 && texts3(pn.notes[1])[0].rotate === -90
+    && (() => { const far = JSON.parse(JSON.stringify(g3.figure)); far.panels[0].notes.push({ id: 'nx', type: 'text', coords: 'axes', x: 1.05, y: 0.5, text: 'outside, on the right', size: 9 }, { id: 'ny', type: 'text', coords: 'axes', x: -0.2, y: 1.15, text: 'M3799', size: 9, valign: 'top' });
+      const l = P.layout(far, M.seriesData), b = l.hit.panels[0].box, b0 = laid3.hit.panels[0].box, right = l.items.find((it) => it.k === 'note:nx'), top = l.items.find((it) => it.k === 'note:ny');
+      return b.w < b0.w - 60 && right.x + P.textWidth('outside, on the right', 9) <= l.width * P.MM + 0.5 && top.x >= 0 && top.y - 9 >= 0 && b.y > b0.y + 10; })(),
+    fs3.columns.map((c) => c.name + (c.formula ? '=' + c.formula : '')).join() + ' / ' + fs3.columns[1].values.join() + ' / ' + pn.series.length + ' / ' + pn.notes.length + ' / ' + (pn.notes[0] ? pn.notes[0].size : ''));
   let ended = ''; try { F.origin(new Uint8Array(project.subarray(0, 300))); } catch (e) { ended = e.message; }
   ok('a project that ends too early says so; one whose windows stop being readable still gives every value, the names it read, and says that some are missing', /ends before its data/.test(ended) && /^Book1: x Energy\[eV\]=\[1,2,3,4\] /.test(sheetsOf(cutShort)) && /Book2 · sheet 2: x A\[\]=\[7,8,9\] !$/.test(sheetsOf(cutShort)), ended + ' /// ' + sheetsOf(cutShort));
   console.log(failed ? '\n' + failed + ' FAILED' : '\nall ok');
