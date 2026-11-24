@@ -1,0 +1,57 @@
+# Asymille: curve fitting, analysis and figures for publication.
+#
+#     uv sync                    # the engine, the standalone server and the tools of development
+#     uv run pytest              # the engine against NIST certified values, the API, the figures
+#     uv run python serve.py     # http://localhost:8780, for one person, without accounts
+#
+# The engine (asymille/, without asymille/web) needs numpy, scipy, lmfit and
+# matplotlib only. asymille/web is written for the server of Ondelette (FastAPI,
+# SQLAlchemy, Pydantic): there, accounts are the host's.
+
+[project]
+name = "asymille"
+version = "2.0.0"
+description = "Curve fitting, data analysis and publication figures, served to a browser"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "lmfit>=1.3",
+    "matplotlib>=3.8",
+    "pillow>=10",
+    # asymille/web: the API, as the server of Ondelette is written
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "sqlalchemy>=2.0.30",
+    "pydantic>=2.7",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "httpx>=0.27", "mypy>=1.10", "ruff>=0.5"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.mypy]
+packages = ["asymille"]
+strict = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["lmfit.*", "scipy.*", "matplotlib.*", "PIL.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+
+[tool.ruff]
+line-length = 220
+target-version = "py311"
+extend-exclude = ["legacy"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["B008"]        # Depends(...) in a signature is how FastAPI is written
