@@ -451,6 +451,16 @@ ok('a curve of 50 000 points is drawn with ' + drawn + ': what a page can show',
       const l = P.layout(far, M.seriesData), b = l.hit.panels[0].box, b0 = laid3.hit.panels[0].box, right = l.items.find((it) => it.k === 'note:nx'), top = l.items.find((it) => it.k === 'note:ny');
       return b.w < b0.w - 60 && right.x + P.textWidth('outside, on the right', 9) <= l.width * P.MM + 0.5 && top.x >= 0 && top.y - 9 >= 0 && b.y > b0.y + 10; })(),
     kinds3 + ' / ' + line3.x.join() + ' / ' + line3.y.join() + ' / ' + line3.label + ' / ' + drawn3(pn.series[4]) + ' / ' + pn.notes.length + ' / ' + (pn.notes[0] ? pn.notes[0].size : '') + ' / ' + M.doc.sheets.length);
+  // two files with a column of the same title on one graph: the legend tells them apart by their sheet
+  M.blank('Two files');
+  const fileA = M.sheetFrom('run_A', [{ title: 'Energy', values: [1, 2, 3] }, { title: 'Intensity', values: [1, 4, 9] }], ''), fileB = M.sheetFrom('run_B', [{ title: 'Energy', values: [1, 2, 3] }, { title: 'Intensity', values: [2, 5, 7] }, { title: 'Other', values: [0, 1, 0] }], '');
+  const gT = M.plot(fileA, [fileA.columns[1]], 'line'), pT = gT.figure.panels[0], alone = M.seriesData(pT.series[0], pT).label;
+  M.addData(gT, pT, fileB, fileB.columns[1], {}); M.addData(gT, pT, fileB, fileB.columns[2], {});
+  const namesT = pT.series.map((r) => M.seriesData(r, pT).label), listedT = P.layout(gT.figure, M.seriesData).hit.panels[0].legend;
+  pT.series[1].show = false; const hiddenT = M.seriesData(pT.series[0], pT).label; pT.series[1].show = true;
+  ok('two curves of one graph with the same title, made of two sheets, are named with their sheet in the legend (an underscore of its name is not an index); alone, or with the other hidden, a curve keeps its title; another title is left as it is',
+    alone === 'Intensity' && namesT.join(' | ') === 'Intensity · run\\_A | Intensity · run\\_B | Other' && hiddenT === 'Intensity' && M.seriesData(pT.series[0]).label === 'Intensity · run\\_A' && !!listedT && listedT.rows.map((k) => k.label).join(' | ') === namesT.join(' | '),
+    alone + ' / ' + namesT.join(' | ') + ' / ' + hiddenT + ' / ' + (listedT ? listedT.rows.length : 'no legend'));
   // what is pasted in a sheet
   const G = A.grid, cells = (t) => JSON.stringify(G.cellsOf(t));
   ok('what is pasted in a sheet: tabs make the columns (an empty cell stays one), or semicolons, or the spaces of columns of numbers; a name with a space is one cell; one value fills the selection, a block is repeated a whole number of times, and whole columns repeat a single row only',

@@ -75,6 +75,8 @@ Everything that compares the model with data goes through two functions of `fitt
 
 `compare` takes numbers the page already holds (points, fitted parameters, χ²) and decides nothing about which fits may be compared: `comparable` in `page/js/model.js` does (the same columns, range, weights and loss).
 
+A curve of data is told by its sheet as much as by its column (every sheet has a `B`): `model.twin` makes `seriesData` add the name of the sheet to the label when another curve drawn on the same graph has the same title and another sheet, and the Curves tab says the sheet of each curve (`originOf` in `inspect.js`; `app.openColumn` shows it). A new list of columns or curves that can span sheets should name the sheet too.
+
 ### A function drawn on a graph
 
 A curve of `panel.series` with `kind: 'fn'`: `expr` (read by `expr.compile`, the grammar of a custom fit function: never the wider `column`), `params` (the value of each name that is not x, set by hand), `from`, `to` (null: as far as the axis is set, or else as far as the data of the panel go) and `points`. Its values are not in the document: `model.seriesData(r, panel)` computes them at each layout, which is why `layout` hands the panel to `data(series, panel)`. `setFunction` rewrites the formula and keeps the values of the names that stay; a formula that cannot be read keeps its text and its values and draws nothing (`fnOf(r).error` says why). `fitFromFunction` makes a fit with that formula as an `expression` component. In the inspector, a parameter is stepped with `touch()`, not `refresh()`: the field must keep the focus while the arrows are held. Code that walks `panel.series` must expect this third kind beside `data` and `fit`: it has no `sheet`.
@@ -109,7 +111,7 @@ Three things that were bugs once:
 
 ## Conventions
 
-- The README states counts and measured facts (55 functions and the instrument response, 18 operations, 28 presets, 149 tests, 79 check lines, the NIST tolerances). When a change moves one, update the sentence, and say what was measured and what was not in the same plain register.
+- The README states counts and measured facts (55 functions and the instrument response, 18 operations, 28 presets, 149 tests, 80 check lines, the NIST tolerances). When a change moves one, update the sentence, and say what was measured and what was not in the same plain register.
 - The journal presets in `asymille/journals.py` are written by hand from the guides for authors; `CHECKED` says they were not re-read from the publishers. Do not present them as verified unless they were.
 - A result is never invented: a fit that fails says why, an operation that cannot be done says why, and a warning is attached to a number that should not be trusted.
 - Commit subjects are one plain sentence saying what changed.
