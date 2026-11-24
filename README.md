@@ -23,7 +23,7 @@ Check it:
 
 ```bash
 uv run pytest                     # 149 tests: the engine, the API, the figures
-node tools/check_page.js          # 76 lines: the parts of the page that hold logic, run in Node
+node tools/check_page.js          # 77 lines: the parts of the page that hold logic, run in Node
 uv run mypy && uv run ruff check asymille tests tools serve.py
 ```
 
@@ -51,7 +51,7 @@ Also read there, in the browser: the workbooks of Excel (`.xlsx`) and of LibreOf
 
 **What a fit is worth.** Every parameter with its standard error, and on request the interval found by profiling χ²; quantities derived from the parameters (width at half maximum, height, half-life…) with their uncertainty propagated through the covariance matrix; χ², reduced χ², R², AIC, BIC, and with true error bars the probability of the χ² found; correlations; the confidence band of the curve; a panel of residuals. And warnings in words when a number should not be trusted: a fit that did not converge, a parameter on its bound, two parameters the data cannot tell apart, error bars that are too small.
 
-**The fit on its graph.** Under the Fit button: which of the components have their curve drawn, one button each; the curve of the fit hidden or shown; and what the fit writes on the graph, to choose among its equation (one line per component, as `y = A/(σ√(2π)) · exp(−(x−x_c)²/2σ²)`), its parameters with their uncertainty, the derived quantities, χ² and R². That text follows the fit: it is written again each time the fit is run, until it is rewritten by hand, after which it is the person's. It is dragged, sized and framed like any text.
+**The fit on its graph.** Under the Fit button: which of the components have their curve drawn, one button each; the curve of the fit hidden or shown; and what the fit writes on the graph, to choose among its equation (one line per component, as `y = A/(σ√(2π)) · exp(−(x−x_c)²/2σ²)`), its parameters with their uncertainty, the derived quantities, χ² and R². That text follows the fit: it is written again each time the fit is run, until it is rewritten by hand, after which it is the person's. It is dragged, sized and framed like any text. Before the fit is run there are no parameters to write: the text is then empty and the panel says so, rather than showing buttons pressed over an unchanged graph. A fit has one such text, on one graph: when another graph is shown, the panel names the graph that holds it and brings it to this one on request.
 
 **My formats.** The size, the type, the lines, the ticks and the colours of a graph can be kept under a name ("PRB single column", "my thesis") and given to any other graph, in any project of the same account. Without a server they are kept in the browser.
 

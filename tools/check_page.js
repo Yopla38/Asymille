@@ -163,6 +163,15 @@ ok('what is sent to be fitted: null where a cell is not a number', JSON.stringif
     && eq.length === ids.length + 1 && eq[0] === 'y = ' + ids.map((k) => 'y_{' + k + '}').join(' + ') && eq[1].startsWith('y_{' + ids[0] + '} = ') && full.length > eq.length && /^reduced \\chi\^2 = /.test(full[full.length - 2]) && /^R\^2 = /.test(full[full.length - 1])
     && same && laid.filter((it) => it.t === 'text').length === full.length && ys.every((y, i) => i === 0 || y > ys[i - 1]) && framed === 1 && M.fitNote(f) === null
     && M.shownExpression('a*exp(-x/tau1) + x^2 - my_par*x_0') === 'a·exp(−x/\\tau_{1}) + x^{2} − my\\_par·x_0', [oneOnly, allButFirst, hidden, stillHidden, eq.length, full.length, laid.length, framed].join(' / '));
+  // a text that has nothing to say yet is empty, not invented; and it is brought from the graph it was written on to another
+  const kept = f.result, keptAll = f.results; f.result = null; f.results = {};
+  const early = M.writeFit(f, g, { params: true, stats: true }, plainOf), nothingYet = early.text; f.result = kept; f.results = keptAll;
+  M.refreshFitNotes(f, plainOf); const later = early.text.split('\n').length;
+  const g2 = M.plot(M.sheet(f.sheet), [M.column(M.sheet(f.sheet), f.y)], 'scatter'), moved = M.bringFitNote(f, g2), there = M.fitNote(f);
+  const drawnThere = P.layout(g2.figure, M.seriesData).items.filter((it) => it.k === 'note:' + early.id).length, leftHere = g.figure.panels.some((p) => p.notes.includes(early));
+  M.writeFit(f, g2, {}, plainOf); M.doc.graphs = M.doc.graphs.filter((k) => k !== g2); M.doc.view.graph = g.id;
+  ok('before the fit is run its parameters write nothing, and they are written by the fit; the text of a fit is brought from one graph to another', nothingYet === '' && later >= 2 && moved === early && there.graph === g2 && drawnThere === later && !leftHere && M.fitNote(f) === null,
+    [JSON.stringify(nothingYet), later, drawnThere, leftHere].join(' / '));
   M.showFit(f, g, { components: true, band: true }); M.showResiduals(f, g);
   ok('the components, the band and the panel of residuals of a fit are taken off the graph and put back; the curve of the fit stays', all.components && all.band && all.residuals && !curveOnly.components && !curveOnly.band && curveOnly.residuals && kinds === 'data,total'
     && !none.residuals && one && JSON.stringify(M.shownOf(f)) === JSON.stringify(all) && g.figure.panels.length === 2 && g.figure.height === Math.round(Math.round(tall / 1.25) * 1.25));

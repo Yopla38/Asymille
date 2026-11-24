@@ -79,7 +79,7 @@ Everything that compares the model with data goes through two functions of `fitt
 
 A registry entry carries its equation twice: `tex`, typeset in the panel and the report, and `plain`, one line in the markup `plot.js` draws (`x_c`, `^{2}`, `\sigma`). `plain` is written from `tex` by `functions.one_line`; what that cannot write (cases, sums, integrals) is given by hand as `plain=`. A test holds every `plain` to what the page can draw, reading the Greek letters from `plot.js` itself: a new function whose equation uses another TeX command fails there, and wants a `plain=`.
 
-The text a fit writes on a graph is a note of the figure (`type: 'text'`, several lines) that names its fit (`fit`) and what it holds (`of`). `model.refreshFitNotes` writes it again after each fit; a text edited by hand loses `fit` and is left alone. The curve of the fit is hidden with `show: false`, not removed, so that `showFit` after a new fit does not bring it back.
+The text a fit writes on a graph is a note of the figure (`type: 'text'`, several lines) that names its fit (`fit`) and what it holds (`of`). `model.refreshFitNotes` writes it again after each fit; a text edited by hand loses `fit` and is left alone. A fit has one such text, on one graph (`fitNote`); it is empty until there is something to write (no component, or parameters asked before the fit is run), and `fitpanel.writtenWhere` then says why, or on which graph it is (`bringFitNote` moves it). The curve of the fit is hidden with `show: false`, not removed, so that `showFit` after a new fit does not bring it back.
 
 ### Files that are not text
 
@@ -103,7 +103,7 @@ Three things that were bugs once:
 
 ## Conventions
 
-- The README states counts and measured facts (55 functions and the instrument response, 18 operations, 28 presets, 149 tests, 76 check lines, the NIST tolerances). When a change moves one, update the sentence, and say what was measured and what was not in the same plain register.
+- The README states counts and measured facts (55 functions and the instrument response, 18 operations, 28 presets, 149 tests, 77 check lines, the NIST tolerances). When a change moves one, update the sentence, and say what was measured and what was not in the same plain register.
 - The journal presets in `asymille/journals.py` are written by hand from the guides for authors; `CHECKED` says they were not re-read from the publishers. Do not present them as verified unless they were.
 - A result is never invented: a fit that fails says why, an operation that cannot be done says why, and a warning is attached to a number that should not be trusted.
 - Commit subjects are one plain sentence saying what changed.
