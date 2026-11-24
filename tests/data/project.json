@@ -1,7 +1,7 @@
 {
  "version": 1,
  "name": "Check",
- "seq": 39,
+ "seq": 41,
  "sheets": [
   {
    "id": "s1",
@@ -503,6 +503,30 @@
         "fit": "f12",
         "part": "b1",
         "column": null
+       },
+       {
+        "kind": "fn",
+        "axis": "y",
+        "label": "",
+        "type": "line",
+        "color": "#e69f00",
+        "width": null,
+        "dash": "solid",
+        "marker": "none",
+        "size": 3.5,
+        "open": false,
+        "opacity": 1,
+        "show": true,
+        "legend": true,
+        "id": "r40",
+        "expr": "h*exp(-(x - 2)^2) + b",
+        "params": {
+         "h": 20,
+         "b": 25
+        },
+        "from": null,
+        "to": null,
+        "points": 400
        }
       ],
       "notes": [

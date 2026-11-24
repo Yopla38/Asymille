@@ -19,7 +19,7 @@
 const fs = require('fs'), path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 global.window = {};
-for (const f of ['util', 'expr', 'importer', 'files', 'plot', 'model']) require(path.join(ROOT, 'page/js', f + '.js'));
+for (const f of ['util', 'expr', 'importer', 'files', 'plot', 'model', 'grid']) require(path.join(ROOT, 'page/js', f + '.js'));
 const A = window.ASY, M = A.model, P = A.plot;
 A.fnLabel = (c) => c.fn;
 let failed = 0;
@@ -109,11 +109,29 @@ kept.variable = { name: 'Temperature', unit: 'K' }; kept.members[0].value = 160;
 kept.members.push({ sheet: second.id, value: 180, state: 'done', message: '', result: { success: true, message: '', redchi: 1.2, rsquared: 0.98, npoints: 4, nvarys: 4, warnings: ['p1_sigma ended on its bound'],
   params: [{ name: 'p1_center', value: 2.1, stderr: 0.05, vary: true, tied: '' }], derived: [{ name: 'p1_fwhm', label: 'full width at half maximum', value: 1.4, stderr: 0.1 }] } });
 M.seriesTable(kept); M.reviewGraph(kept);
+// a function drawn on the graph, its parameters set by hand: the project the API is tested with holds one
+const dataY = M.seriesData(graph.figure.panels[0].series.find((r) => r.kind === 'data')).y.filter((v) => isFinite(v)), middle = Number(((Math.min(...dataY) + Math.max(...dataY)) / 2).toPrecision(3));
+const drawnFn = M.addFunction(graph, graph.figure.panels[0]), level = Object.assign({}, drawnFn.params), flat = M.seriesData(drawnFn, graph.figure.panels[0]);
+const fnWrong = M.setFunction(drawnFn, 'h*exp(-(x - 2)^2 + b'), fnUnread = M.seriesData(drawnFn), keptValues = Object.assign({}, drawnFn.params);
+M.setFunction(drawnFn, 'h*exp(-(x - 2)^2) + b'); drawnFn.params.h = 20;
 M.log('Checked.'); M.doc.log.forEach((l) => { l.at = '2026-01-01T00:00:00.000Z'; });        // the same project at every run
 M.commit();
 const data = M.seriesData;
 ok('a series of data reads its columns, with NaN where a cell is text', (() => { const d = data(graph.figure.panels[0].series.find((r) => r.kind === 'data')); return d.x.length === 4 && isNaN(d.y[1]) && d.yerr[3] === 2 && d.label === 'Counts'; })());
-ok('the curves of a fit are series of the graph: total, band, components, residuals in a panel below', graph.figure.panels.length === 2 && graph.figure.panels[0].series.length === 5 && data(graph.figure.panels[1].series[0]).y.length === 3 && graph.figure.layout.shareX === true);
+ok('a function drawn on a graph is a formula of x whose other names are parameters set by hand: it starts level through the middle of the data; rewritten, a parameter that stays keeps its value and a new one starts at 1; one that cannot be read is not drawn, says why and loses nothing; it is drawn as far as the data go, or the axis, or where it says; a fit starts from it',
+  (() => {
+    const p = graph.figure.panels[0], d = M.seriesData(drawnFn, p), at2 = d.x.reduce((best, v, i) => (Math.abs(v - 2) < Math.abs(d.x[best] - 2) ? i : best), 0);
+    const laid = P.layout(graph.figure, M.seriesData).items.filter((it) => it.k === 'series:' + drawnFn.id).length;
+    p.x.min = 0; p.x.max = 10; const onAxis = M.seriesData(drawnFn, p); p.x.min = p.x.max = null;
+    drawnFn.from = -1; drawnFn.to = 1; drawnFn.points = 3; const said = M.seriesData(drawnFn, p); drawnFn.from = drawnFn.to = null; drawnFn.points = 400;
+    const before = M.doc.fits.length, started = M.fitFromFunction(drawnFn, p), comp = started && started.model.components[0], viewed = M.doc.view.fit;
+    const good = started && comp.fn === 'expression' && comp.expr === drawnFn.expr && comp.params.h.value === 20 && comp.params.b.value === level.b && comp.params.h.vary === true;
+    if (started) { M.removeFit(started.id); M.doc.view.fit = fit.id; }
+    return level.a === 0 && level.b === middle && flat.x.length === 400 && flat.x[0] === 1 && flat.x[399] === 4 && flat.y.every((v) => v === middle) && flat.label === 'y = a·x + b'
+      && typeof fnWrong === 'string' && fnWrong.length > 3 && fnUnread === null && keptValues.a === 0 && keptValues.b === middle && M.fnOf(drawnFn).names.join() === 'h,b' && drawnFn.params.b === middle && Object.keys(drawnFn.params).join() === 'h,b'
+      && close(d.y[at2], 20 * Math.exp(-Math.pow(d.x[at2] - 2, 2)) + middle) && laid >= 1 && onAxis.x[0] === 0 && onAxis.x[399] === 10 && said.x.join() === '-1,0,1' && good && M.doc.fits.length === before && viewed === started.id;
+  })(), JSON.stringify([level, flat.x[0], flat.x[399], fnWrong, keptValues, drawnFn.params]));
+ok('the curves of a fit are series of the graph: total, band, components, residuals in a panel below', graph.figure.panels.length === 2 && graph.figure.panels[0].series.length === 6 && data(graph.figure.panels[1].series[0]).y.length === 3 && graph.figure.layout.shareX === true);
 const written = JSON.stringify(M.serialize());
 M.restore(JSON.parse(written));
 ok('a project written and read back is the same project', JSON.stringify(M.serialize()) === written);
@@ -144,7 +162,7 @@ ok('what is sent to be fitted: null where a cell is not a number', JSON.stringif
 {
   const f = M.fit(fit.id), g = M.graph(graph.id), tall = g.figure.height, all = M.shownOf(f);
   M.hideFit(f, 'components'); M.hideFit(f, 'band');
-  const curveOnly = M.shownOf(f), kinds = g.figure.panels[0].series.map((r) => r.part || 'data').join();
+  const curveOnly = M.shownOf(f), kinds = g.figure.panels[0].series.map((r) => r.part || r.kind).join();
   M.hideResiduals(f);
   const none = M.shownOf(f), one = g.figure.panels.length === 1 && g.figure.layout.shareX === false && g.figure.layout.ratios.length === 0 && g.figure.height === Math.round(tall / 1.25);
   // one component alone, the curve of the fit hidden and brought back, and what the fit writes on its graph
@@ -173,12 +191,12 @@ ok('what is sent to be fitted: null where a cell is not a number', JSON.stringif
   ok('before the fit is run its parameters write nothing, and they are written by the fit; the text of a fit is brought from one graph to another', nothingYet === '' && later >= 2 && moved === early && there.graph === g2 && drawnThere === later && !leftHere && M.fitNote(f) === null,
     [JSON.stringify(nothingYet), later, drawnThere, leftHere].join(' / '));
   M.showFit(f, g, { components: true, band: true }); M.showResiduals(f, g);
-  ok('the components, the band and the panel of residuals of a fit are taken off the graph and put back; the curve of the fit stays', all.components && all.band && all.residuals && !curveOnly.components && !curveOnly.band && curveOnly.residuals && kinds === 'data,total'
+  ok('the components, the band and the panel of residuals of a fit are taken off the graph and put back; the curve of the fit stays', all.components && all.band && all.residuals && !curveOnly.components && !curveOnly.band && curveOnly.residuals && kinds === 'data,total,fn'
     && !none.residuals && one && JSON.stringify(M.shownOf(f)) === JSON.stringify(all) && g.figure.panels.length === 2 && g.figure.height === Math.round(Math.round(tall / 1.25) * 1.25));
   M.restore(JSON.parse(written));
 }
 M.removeSheet(sheet.id);
-ok('removing a sheet removes the series and the fits made of it', M.doc.fits.length === 0 && M.doc.graphs[0].figure.panels.every((p) => p.series.length === 0));
+ok('removing a sheet removes the series and the fits made of it; a function drawn on the graph is of no sheet, and stays', M.doc.fits.length === 0 && M.doc.graphs[0].figure.panels.flatMap((p) => p.series).map((r) => r.kind).join() === 'fn');
 M.undo();
 if (process.argv.includes('--write')) { fs.writeFileSync(path.join(ROOT, 'tests/data/project.json'), JSON.stringify(M.serialize(), null, 1) + '\n'); console.log('wrote   tests/data/project.json'); }
 ok('tests/data/project.json is this project (run with --write after changing model.js)', fs.existsSync(path.join(ROOT, 'tests/data/project.json')) && JSON.stringify(JSON.parse(read('tests/data/project.json'))) === JSON.stringify(M.serialize()));
@@ -402,17 +420,17 @@ ok('a curve of 50 000 points is drawn with ' + drawn + ': what a page can show',
     return Buffer.concat([blockOf(hd), blockOf(d1), blockOf(Buffer.from(text + '\0', 'latin1')), zero]); };
   const pageWindow = (name, layers) => { const w = Buffer.alloc(0x60); w.write(name, 0x02, 'latin1'); w.writeUInt16LE(1300, 0x23); w.writeUInt16LE(1000, 0x25); w.write('LINE', 0x45, 'latin1'); return Buffer.concat([blockOf(w)].concat(layers.map((l) => Buffer.concat([l.head].concat(l.notes, [zero], l.curves, [zero, zero, zero, zero, zero]))), [zero])); };
   const drawnProject = Buffer.concat([Buffer.from('CPYA 4.2878 724#\n'), blockOf(opjHead), zero,
-    dataset('Run_A', 0x6001, 8, [0, 1, 2, 3]), dataset('Run_B', 0x6001, 8, [1, 3, 5, 8]), functionOf('F1', '2*x+1', 5, 0, 1), functionOf('F2', '6.5', 5, 0, 1), functionOf('F3', 'Exp(-x/7.5)', 3, 10, 5), functionOf('F4', 'besselj(x)', 5, 0, 1), functionOf('F5', '9', 5, 0, 1), zero,
+    dataset('Run_A', 0x6001, 8, [0, 1, 2, 3]), dataset('Run_B', 0x6001, 8, [1, 3, 5, 8]), functionOf('F1', '2*x+1', 5, 0, 1), functionOf('F2', '6.5', 5, 0, 1), functionOf('F3', 'Exp(-x/7.5)', 3, 10, 5), functionOf('F4', 'besselj(x)', 5, 0, 1), functionOf('F5', '9', 5, 0, 1), functionOf('F6', 'K*x', 5, 0, 1), zero,
     windowOf('Run', [[curve(1, 3, 'A', ''), curve(2, 0, 'B', '')]]),
     pageWindow('Graph1', [{ head: layerOf([0, 4, 1, 0], [0, 10, 2, 0], box), notes: [textAt('XB', 2, 0, 'Time (min)', { attach: 0x22, centred: true }), textAt('Text1', 0.5, 0.25, '\\p69(400°C)\r\n\\p69(under)', { centred: true }),
       textAt('Text2', 0.1, 0.4, '\\p69(300°C)', { turn: 90 }), textAt('Text3', 0.2, 0.1, '\\g(\\p144(\\c17(t =)))\\c17( 7.5 min)', { font: 18 }), textAt('Text4', 0.3, 0.2, '\\c16809985(late)'), textAt('Text5', 0.8, -0.44, 'an older copy', { top: -400 }),
       textAt('Text6', 3, 7, 'on the scales', { attach: 2 })],
-      curves: [drawnAs(2, 1, 201), drawnAs(3, 0, 200, { line: [1, 0, 0, 0] }), drawnAs(4, 0, 200, { style: 2, line: [19, 0, 0, 0] }), drawnAs(5, 0, 200), drawnAs(6, 0, 200)] }]), zero]);
-  const read3 = F.origin(new Uint8Array(drawnProject)), fnTable = read3.find((t) => t.key === 'functions'), p3 = read3.graphs[0].panels[0];
-  ok('the functions drawn on a graph of Origin become a sheet: a column of x for each grid, and each function with its formula and its values; what this page cannot compute is left empty and said; a function no graph draws is left',
-    read3.length === 2 && fnTable.read.columns.map((c) => c.title + (c.fx ? '=' + c.fx + '@' + c.on : '') + ':' + JSON.stringify(c.values)).join(' ; ') === 'x:[0,1,2,3,4] ; F1=2*x+1@0:[1,3,5,7,9] ; F2=6.5@0:[6.5,6.5,6.5,6.5,6.5] ; F4:[null,null,null,null,null] ; x:[10,15,20] ; F3=exp(-x/7.5)@4:' + JSON.stringify([10, 15, 20].map((x) => Math.exp(-x / 7.5)))
-    && /F4 is not one this page computes/.test(read3[0].said.join()) && p3.curves.map((c) => [c.table, c.x, c.y, c.type, c.color, c.dash, c.label].join(',')).join(' ; ') === 'Run@1,0,1,scatter,#000000,solid, ; functions,,1,line,#ff0000,solid,2*x+1 ; functions,,2,line,#808080,dot,6.5 ; functions,,5,line,#000000,solid,Exp(-x/7.5) ; functions,,3,line,#000000,solid,besselj(x)',
-    fnTable ? fnTable.read.columns.map((c) => c.title + (c.fx ? '=' + c.fx + '@' + c.on : '') + ':' + JSON.stringify(c.values)).join(' ; ') + ' // ' + p3.curves.map((c) => [c.table, c.x, c.y, c.type, c.color, c.dash, c.label].join(',')).join(' ; ') + ' // ' + read3[0].said.join() : 'no table of functions');
+      curves: [drawnAs(2, 1, 201), drawnAs(3, 0, 200, { line: [1, 0, 0, 0] }), drawnAs(4, 0, 200, { style: 2, line: [19, 0, 0, 0] }), drawnAs(5, 0, 200), drawnAs(6, 0, 200), drawnAs(8, 0, 200)] }]), zero]);
+  const read3 = F.origin(new Uint8Array(drawnProject)), p3 = read3.graphs[0].panels[0];
+  const curves3 = p3.curves.map((c) => (c.fn ? [c.fn.expr, c.fn.from, c.fn.to, c.fn.points, c.type, c.color, c.dash, c.label] : [c.table, c.x, c.y, c.type, c.color]).join(',')).join(' ; ');
+  ok('the functions drawn on a graph of Origin stay functions: each curve keeps its formula, read as this page reads one, and the stretch of x it was drawn on; no sheet is made of them; one this page cannot compute is kept as written and said, a name that is not x too; a function no graph draws is left',
+    read3.length === 1 && curves3 === 'Run@1,0,1,scatter,#000000 ; 2*x+1,0,4,5,line,#ff0000,solid, ; 6.5,0,4,5,line,#808080,dot, ; exp(-x/7.5),10,20,3,line,#000000,solid, ; besselj(x),0,4,5,line,#000000,solid, ; K*x,0,4,5,line,#000000,solid,'
+    && /F4 is not one this page computes/.test(read3[0].said.join()) && /F6 names something else than x/.test(read3[0].said.join()) && !/F5/.test(read3[0].said.join()), curves3 + ' // ' + read3[0].said.join());
   ok('a text of Origin stands where the file says: by its top left corner, or by its centre when it is centred, on the frame or on the scales; with its colour, its size beside that of the titles, its turn; one left outside the page is not taken',
     p3.x.label === 'Time (min)' && p3.notes.map((n) => [n.text.replace(/\n/g, '/'), n.coords, n.x, n.y, n.anchor, n.valign, n.color, n.scale, n.rotate].join(',')).join(' ; ')
       === '400°C/under,axes,0.5,0.75,middle,middle,#000000,0.69,0 ; 300°C,axes,0.1,0.6,start,top,#000000,0.69,90 ; \\tau{} = 7.5 min,axes,0.2,0.9,start,top,#ff0080,0.82,0 ; late,axes,0.3,0.8,start,top,#018000,1,0 ; on the scales,data,3,7,start,top,#000000,1,0'
@@ -420,17 +438,26 @@ ok('a curve of 50 000 points is drawn with ' + drawn + ': what a page can show',
     p3.notes.map((n) => [n.text.replace(/\n/g, '/'), n.coords, n.x, n.y, n.anchor, n.valign, n.color, n.scale, n.rotate].join(',')).join(' ; '));
   M.blank('Functions');
   const made3 = {}; read3.forEach((t) => { made3[t.key] = M.sheetFrom(t.name, t.read.columns, ''); });
-  const fs3 = made3.functions, g3 = M.graphFrom(read3.graphs[0], (key) => made3[key] || null), pn = g3.figure.panels[0];
-  const laid3 = P.layout(g3.figure, M.seriesData), texts3 = (n) => laid3.items.filter((it) => it.t === 'text' && it.k === 'note:' + n.id);
-  fs3.columns[0].values[1] = 10; M.changed(fs3);
-  ok('made here: a function is a column that keeps its formula on its column of x and follows it; its curve is drawn on them; a centred text is laid about its centre, a turned one is turned, one outside the frame has its room on the page',
-    fs3.columns.map((c) => c.name + (c.formula ? '=' + c.formula : '')).join() === 'A,B=2*A+1,C=6.5,D,E,F=exp(-E/7.5)' && fs3.columns[1].values.join() === '1,21,5,7,9' && pn.series.length === 5 && pn.series[1].x === fs3.columns[0].id && pn.series[1].y === fs3.columns[1].id
-    && pn.series[3].x === fs3.columns[4].id && pn.series[1].label === '2*x+1' && pn.notes.length === 5 && pn.notes[0].size === Number((9 * 0.69).toFixed(1)) && texts3(pn.notes[0]).length === 2 && texts3(pn.notes[0]).every((it) => it.anchor === 'middle')
+  const g3 = M.graphFrom(read3.graphs[0], (key) => made3[key] || null), pn = g3.figure.panels[0];
+  const laid3 = P.layout(g3.figure, M.seriesData), texts3 = (n) => laid3.items.filter((it) => it.t === 'text' && it.k === 'note:' + n.id), drawn3 = (r) => laid3.items.filter((it) => it.k === 'series:' + r.id).length;
+  const line3 = M.seriesData(pn.series[1], pn), far3 = M.seriesData(pn.series[3], pn), kinds3 = pn.series.map((r) => r.kind + (r.kind === 'fn' ? ':' + r.expr + ':' + JSON.stringify(r.params) : '')).join(' ');
+  M.setFunction(pn.series[4], 'sin(x)'); const mended = M.seriesData(pn.series[4], pn);
+  ok('made here: a function of Origin is a curve that is a function, drawn where it was, whose formula is rewritten; one that was not read is not drawn until it is; a name that is not x is a parameter; a centred text is laid about its centre, a turned one is turned, one outside the frame has its room on the page',
+    !made3.functions && M.doc.sheets.length === 2 && kinds3 === 'data fn:2*x+1:{} fn:6.5:{} fn:exp(-x/7.5):{} fn:besselj(x):{} fn:K*x:{"K":1}' && line3.x.join() === '0,1,2,3,4' && line3.y.join() === '1,3,5,7,9' && far3.x.join() === '10,15,20' && close(far3.y[2], Math.exp(-20 / 7.5))
+    && drawn3(pn.series[1]) >= 1 && drawn3(pn.series[4]) === 0 && mended.y.length === 5 && close(mended.y[1], Math.sin(1)) && M.seriesData(pn.series[5], pn).y.join() === '0,1,2,3,4' && pn.series[1].label === '' && line3.label === 'y = 2·x+1'
+    && pn.notes.length === 5 && pn.notes[0].size === Number((9 * 0.69).toFixed(1)) && texts3(pn.notes[0]).length === 2 && texts3(pn.notes[0]).every((it) => it.anchor === 'middle')
     && Math.abs((texts3(pn.notes[0])[0].y + texts3(pn.notes[0])[1].y) / 2 - pn.notes[0].size * 0.35 - (laid3.hit.panels[0].box.y + 0.25 * laid3.hit.panels[0].box.h)) < 0.02 && texts3(pn.notes[1])[0].rotate === -90
     && (() => { const far = JSON.parse(JSON.stringify(g3.figure)); far.panels[0].notes.push({ id: 'nx', type: 'text', coords: 'axes', x: 1.05, y: 0.5, text: 'outside, on the right', size: 9 }, { id: 'ny', type: 'text', coords: 'axes', x: -0.2, y: 1.15, text: 'M3799', size: 9, valign: 'top' });
       const l = P.layout(far, M.seriesData), b = l.hit.panels[0].box, b0 = laid3.hit.panels[0].box, right = l.items.find((it) => it.k === 'note:nx'), top = l.items.find((it) => it.k === 'note:ny');
       return b.w < b0.w - 60 && right.x + P.textWidth('outside, on the right', 9) <= l.width * P.MM + 0.5 && top.x >= 0 && top.y - 9 >= 0 && b.y > b0.y + 10; })(),
-    fs3.columns.map((c) => c.name + (c.formula ? '=' + c.formula : '')).join() + ' / ' + fs3.columns[1].values.join() + ' / ' + pn.series.length + ' / ' + pn.notes.length + ' / ' + (pn.notes[0] ? pn.notes[0].size : ''));
+    kinds3 + ' / ' + line3.x.join() + ' / ' + line3.y.join() + ' / ' + line3.label + ' / ' + drawn3(pn.series[4]) + ' / ' + pn.notes.length + ' / ' + (pn.notes[0] ? pn.notes[0].size : '') + ' / ' + M.doc.sheets.length);
+  // what is pasted in a sheet
+  const G = A.grid, cells = (t) => JSON.stringify(G.cellsOf(t));
+  ok('what is pasted in a sheet: tabs make the columns (an empty cell stays one), or semicolons, or the spaces of columns of numbers; a name with a space is one cell; one value fills the selection, a block is repeated a whole number of times, and whole columns repeat a single row only',
+    cells('1\t2\n\t4\n') === '[["1","2"],["","4"]]' && cells('1;2\r\n3;4') === '[["1","2"],["3","4"]]' && cells('x y\n1 2\n3 4') === '[["x","y"],["1","2"],["3","4"]]' && cells('sample A\nsample B') === '[["sample A"],["sample B"]]'
+    && cells('1\n\n3') === '[["1"],[""],["3"]]' && cells('0,5 1,5') === '[["0,5","1,5"]]' && G.repeats(1, 1, 4, 2, false).join() === '4,2' && G.repeats(2, 2, 6, 2, false).join() === '3,1' && G.repeats(2, 1, 5, 1, false).join() === '1,1'
+    && G.repeats(3, 1, 240, 1, true).join() === '1,1' && G.repeats(1, 2, 240, 2, true).join() === '240,1' && G.repeats(4, 1, 1, 1, false).join() === '1,1',
+    [cells('1\t2\n\t4\n'), cells('x y\n1 2\n3 4'), cells('sample A\nsample B'), cells('1\n\n3'), G.repeats(1, 1, 4, 2, false).join()].join(' / '));
   let ended = ''; try { F.origin(new Uint8Array(project.subarray(0, 300))); } catch (e) { ended = e.message; }
   ok('a project that ends too early says so; one whose windows stop being readable still gives every value, the names it read, and says that some are missing', /ends before its data/.test(ended) && /^Book1: x Energy\[eV\]=\[1,2,3,4\] /.test(sheetsOf(cutShort)) && /Book2 · sheet 2: x A\[\]=\[7,8,9\] !$/.test(sheetsOf(cutShort)), ended + ' /// ' + sheetsOf(cutShort));
   console.log(failed ? '\n' + failed + ' FAILED' : '\nall ok');
