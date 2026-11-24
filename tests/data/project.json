@@ -1,7 +1,7 @@
 {
  "version": 1,
  "name": "Check",
- "seq": 38,
+ "seq": 39,
  "sheets": [
   {
    "id": "s1",
@@ -104,11 +104,11 @@
    "source": ""
   },
   {
-   "id": "s21",
+   "id": "s22",
    "name": "Peaks 180K",
    "columns": [
     {
-     "id": "c22",
+     "id": "c23",
      "name": "A",
      "title": "Energy",
      "unit": "eV",
@@ -124,7 +124,7 @@
      "made": null
     },
     {
-     "id": "c23",
+     "id": "c24",
      "name": "B",
      "title": "Counts",
      "unit": "",
@@ -140,7 +140,7 @@
      "made": null
     },
     {
-     "id": "c24",
+     "id": "c25",
      "name": "C",
      "title": "err",
      "unit": "",
@@ -159,11 +159,11 @@
    "source": ""
   },
   {
-   "id": "s26",
+   "id": "s27",
    "name": "Results of Series of Peaks",
    "columns": [
     {
-     "id": "c27",
+     "id": "c28",
      "name": "A",
      "title": "Temperature",
      "unit": "K",
@@ -175,12 +175,12 @@
       180
      ],
      "made": {
-      "series": "q25",
+      "series": "q26",
       "key": "variable"
      }
     },
     {
-     "id": "c28",
+     "id": "c29",
      "name": "B",
      "title": "p1 center",
      "unit": "eV",
@@ -192,12 +192,12 @@
       2.1
      ],
      "made": {
-      "series": "q25",
+      "series": "q26",
       "key": "p1_center"
      }
     },
     {
-     "id": "c29",
+     "id": "c30",
      "name": "C",
      "title": "± p1 center",
      "unit": "eV",
@@ -209,12 +209,12 @@
       0.05
      ],
      "made": {
-      "series": "q25",
+      "series": "q26",
       "key": "p1_center:err"
      }
     },
     {
-     "id": "c30",
+     "id": "c31",
      "name": "D",
      "title": "p1 fwhm",
      "unit": "eV",
@@ -226,12 +226,12 @@
       1.4
      ],
      "made": {
-      "series": "q25",
+      "series": "q26",
       "key": "p1_fwhm"
      }
     },
     {
-     "id": "c31",
+     "id": "c32",
      "name": "E",
      "title": "± p1 fwhm",
      "unit": "eV",
@@ -243,12 +243,12 @@
       0.1
      ],
      "made": {
-      "series": "q25",
+      "series": "q26",
       "key": "p1_fwhm:err"
      }
     },
     {
-     "id": "c32",
+     "id": "c33",
      "name": "F",
      "title": "Reduced χ²",
      "unit": "",
@@ -260,12 +260,12 @@
       1.2
      ],
      "made": {
-      "series": "q25",
+      "series": "q26",
       "key": "redchi"
      }
     },
     {
-     "id": "c33",
+     "id": "c34",
      "name": "G",
      "title": "R²",
      "unit": "",
@@ -277,12 +277,12 @@
       0.98
      ],
      "made": {
-      "series": "q25",
+      "series": "q26",
       "key": "rsquared"
      }
     },
     {
-     "id": "c34",
+     "id": "c35",
      "name": "H",
      "title": "To check",
      "unit": "",
@@ -294,12 +294,12 @@
       "1 warning"
      ],
      "made": {
-      "series": "q25",
+      "series": "q26",
       "key": "check"
      }
     },
     {
-     "id": "c35",
+     "id": "c36",
      "name": "I",
      "title": "File",
      "unit": "",
@@ -311,7 +311,7 @@
       "Peaks 180K"
      ],
      "made": {
-      "series": "q25",
+      "series": "q26",
       "key": "file"
      }
     }
@@ -321,7 +321,7 @@
  ],
  "graphs": [
   {
-   "id": "g9",
+   "id": "g10",
    "name": "Peaks",
    "figure": {
     "width": 120,
@@ -421,8 +421,8 @@
         "opacity": 1,
         "show": true,
         "legend": false,
-        "id": "r13",
-        "fit": "f11",
+        "id": "r14",
+        "fit": "f12",
         "part": "band",
         "column": null
        },
@@ -440,7 +440,7 @@
         "opacity": 1,
         "show": true,
         "legend": true,
-        "id": "r10",
+        "id": "r11",
         "sheet": "s4",
         "x": "c5",
         "y": "c6",
@@ -461,8 +461,8 @@
         "opacity": 1,
         "show": true,
         "legend": true,
-        "id": "r12",
-        "fit": "f11",
+        "id": "r13",
+        "fit": "f12",
         "part": "total",
         "column": null
        },
@@ -480,8 +480,8 @@
         "opacity": 1,
         "show": true,
         "legend": true,
-        "id": "r14",
-        "fit": "f11",
+        "id": "r15",
+        "fit": "f12",
         "part": "p1",
         "column": null
        },
@@ -499,15 +499,15 @@
         "opacity": 1,
         "show": true,
         "legend": true,
-        "id": "r15",
-        "fit": "f11",
+        "id": "r16",
+        "fit": "f12",
         "part": "b1",
         "column": null
        }
       ],
       "notes": [
        {
-        "id": "n19",
+        "id": "n20",
         "type": "text",
         "x": 2,
         "y": 30,
@@ -516,7 +516,7 @@
         "coords": "data"
        },
        {
-        "id": "n20",
+        "id": "n21",
         "type": "span",
         "x": 1.5,
         "x2": 2.5,
@@ -530,7 +530,7 @@
       "titleBold": true
      },
      {
-      "id": "p16",
+      "id": "p17",
       "title": "",
       "x": {
        "label": "Energy (eV)",
@@ -575,15 +575,15 @@
         "opacity": 1,
         "show": true,
         "legend": false,
-        "id": "r17",
-        "fit": "f11",
+        "id": "r18",
+        "fit": "f12",
         "part": "residuals",
         "column": null
        }
       ],
       "notes": [
        {
-        "id": "n18",
+        "id": "n19",
         "type": "hline",
         "y": 0,
         "color": "#888888",
@@ -596,7 +596,7 @@
    }
   },
   {
-   "id": "g36",
+   "id": "g37",
    "name": "Each fit of Series of Peaks",
    "figure": {
     "width": 120,
@@ -678,8 +678,8 @@
         "opacity": 1,
         "show": true,
         "legend": true,
-        "id": "r37",
-        "follow": "q25",
+        "id": "r38",
+        "follow": "q26",
         "sheet": "s4",
         "x": "c5",
         "y": "c6",
@@ -700,8 +700,8 @@
         "opacity": 1,
         "show": true,
         "legend": true,
-        "id": "r38",
-        "series": "q25",
+        "id": "r39",
+        "series": "q26",
         "part": "total"
        }
       ],
@@ -713,7 +713,7 @@
  ],
  "fits": [
   {
-   "id": "f11",
+   "id": "f12",
    "name": "Fit of Counts",
    "sheet": "s4",
    "x": "c5",
@@ -831,9 +831,9 @@
  ],
  "series": [
   {
-   "id": "q25",
+   "id": "q26",
    "name": "Series of Peaks",
-   "fit": "f11",
+   "fit": "f12",
    "variable": {
     "name": "Temperature",
     "unit": "K"
@@ -847,7 +847,7 @@
      "result": null
     },
     {
-     "sheet": "s21",
+     "sheet": "s22",
      "value": 180,
      "state": "done",
      "message": "",
@@ -882,8 +882,8 @@
     }
    ],
    "chain": true,
-   "results": "s26",
-   "graph": "g36",
+   "results": "s27",
+   "graph": "g37",
    "current": "s4",
    "ran": ""
   }
@@ -897,7 +897,7 @@
  "view": {
   "main": "graph",
   "sheet": "s1",
-  "graph": "g9",
-  "fit": "f11"
+  "graph": "g10",
+  "fit": "f12"
  }
 }

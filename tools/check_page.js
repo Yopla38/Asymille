@@ -72,7 +72,16 @@ ok('a formula column is computed row by row, and a cell of text gives an empty o
 twice.formula = 'B/max(B) + A[1]'; M.recompute(sheet);
 ok('a formula column reads a whole column and another row', JSON.stringify(twice.values) === '[3.75,3.25,null,4]', JSON.stringify(twice.values));
 twice.formula = 'if(D > 1, 1, 0)'; M.recompute(sheet);
-ok('a column cannot be computed from itself, in any way', /cannot be computed from itself/.test(M.errors[twice.id] || ''), M.errors[twice.id]);
+ok('a formula that names its own column is not one to keep: the column is not computed from it, and says why', /names its own column: it is applied once/.test(M.errors[twice.id] || '') && M.namesItself(twice, 'D + 1') && !M.namesItself(twice, 'B + 1') && !M.namesItself(twice, 'D +'), M.errors[twice.id]);
+{
+  // applied once instead, row after row: a row reads what it held and what the rows above it have become; a function of the whole column reads what it held
+  const own = M.addColumn(sheet, { values: [1, 2, 3, 4] }), was = own.name, steps = [];
+  for (const formula of [was + '*2', was + '/max(' + was + ')', 'if(i == 1, A, ' + was + '[i-1] + A)', was + ' - ' + was + '[i+1]']) { M.applyOnce(sheet, own, formula); steps.push(JSON.stringify(own.values) + own.formula); }
+  let refused = ''; try { M.applyOnce(sheet, own, was + ' + nope'); } catch (e) { refused = e.message; }
+  ok('applied once: doubled, divided by its own maximum, summed down its rows (each row after the one above it), and not kept; a formula that cannot be read changes nothing',
+    steps.join(' ') === '[2,4,6,8] [0.25,0.5,0.75,1] [3,4,6,10] [-1,-2,-4]' && /no column is called nope/.test(refused) && JSON.stringify(own.values) === '[-1,-2,-4]', steps.join(' ') + ' / ' + refused);
+  M.removeColumn(sheet, own.id);
+}
 twice.formula = 'B*2 + nope'; M.recompute(sheet);
 ok('a formula that names no column says so', /no column is called nope/.test(M.errors[twice.id] || ''));
 twice.formula = 'sqrt(A) + n'; M.recompute(sheet);
